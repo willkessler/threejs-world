@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "ThreeJS Displayerss",
+  "version": "0.1",
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "chrome_url_overrides" : {
+    "newtab": "landscape.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": ["jquery-3.2.1.min.js", "content.js"]
+    }
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  }
+}
