@@ -68,7 +68,12 @@ var createWorld = (options) => {
   geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
   var vertices = geometry.vertices;
   balloonMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-  let centerVertices = {};
+  centerVertices = [];
+  for (let i in vertices) {
+    if (vertices[i].x === 0) {
+      centerVertices.push(vertices[i]);
+    }
+  }
   
   for (let i in vertices) {
     vertices[i].z = vertices[i].y;
@@ -82,8 +87,8 @@ var createWorld = (options) => {
     }
     //    vertices[i].y = 25 * Math.pow(e, exponent);
     //console.log(vertices[i].x, vertices[i].z);
-    //vertices[i].y = e * 4;
-    vertices[i].y = 0;
+    vertices[i].y = e * 10;
+    //vertices[i].y = 0;
     if (vertices[i].x === 0) {
       let zSpot =  (height /2) - vertices[i].z;
       balloonPositions[zSpot] = vertices[i].y;
@@ -92,20 +97,19 @@ var createWorld = (options) => {
     minY = (minY > vertices[i].y ? vertices[i].y : minY);
   }
 
-  let thing = 0;
+  /*
   const descendingSortedKeys = Object.keys(balloonPositions).sort(function(a,b){return a-b});
   console.log(descendingSortedKeys);
   let camPositions = [];
-  for (let cp of descendingSortedKeys) {
-    camPositions.push(balloonPositions[cp]);
-  }
-  for (let cp in camPositions) {
+  */
+  for (let v of centerVertices) {
     balloonGeometry = new THREE.BoxGeometry(2,2,.1);
     balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
     balloon.position.x = 0;
-    balloon.position.y = camPositions[cp] ;
+    balloon.position.y = v.y + 2;
     //console.log('h',bk, balloonPositions[bk]);
-    balloon.position.z =  cp * (height / resolution) - (height / 2);
+    //balloon.position.z =  cp * (height / resolution) - (height / 2);
+    balloon.position.z = v.z;
     options.group.add(balloon);
   }
   
@@ -155,7 +159,7 @@ var createWorld = (options) => {
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
-  //options.group.add(ocean);
+  options.group.add(ocean);
   //makeText('Udacity', options.group);
   options.scene.add(options.group);
 
@@ -217,10 +221,10 @@ scene.add( light );
 
 console.log('Beginning world build.');
 const startTime = new Date().getTime();
-//const width = 200;
-const width = 100;
+const width = 200;
+//const width = 100;
 const height = width;
-const resolution = 10;
+const resolution = 100;
 const scenery = 
   createWorld({
     width: width,
