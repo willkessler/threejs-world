@@ -70,7 +70,7 @@ var createWorld = (options) => {
   balloonMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
   centerVertices = [];
   for (let i in vertices) {
-    if (vertices[i].x === 0) {
+    if ((vertices[i].x === 0) && (vertices[i].z % 8 == 0)) {
       centerVertices.push(vertices[i]);
     }
   }
@@ -177,8 +177,8 @@ var createWorld = (options) => {
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
-  //options.group.add(ocean);
-  //makeText('Udacity', options.group);
+  options.group.add(ocean);
+  makeText('Udacity', options.group);
   options.scene.add(options.group);
 
 
@@ -218,12 +218,13 @@ function render() {
   // let camPoint = scenery.groundCurve.getPoint(t);
   //scenery.splineObject.rotation.y += 0.005;
   //camera.position.y = camPoint.y;
-  if (camZMap < 1-0.001) {
-    camZMap += 0.0005;
+  let zMapInc = 0.0009;
+  if (camZMap < 1-zMapInc) {
+    camZMap += zMapInc;
   }
   let camPoint = scenery.groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
-  camera.position.y = camPoint.y + 5;
+  camera.position.y = Math.max(camPoint.y + 5, 1);
   //console.log('zmap:', camZMap, 'camPoint:', camPoint);
 
   //group.position.z += 0.02;
@@ -263,9 +264,9 @@ scene.add( light );
 console.log('Beginning world build.');
 const startTime = new Date().getTime();
 //const width = 200;
-const width = 100;
+const width = 200;
 const height = width;
-const resolution = 200;
+const resolution = 120;
 const scenery = 
   createWorld({
     width: width,
