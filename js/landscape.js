@@ -84,7 +84,7 @@ var createWorld = (options) => {
       e += 1/power * simplex.noise2D(power * nx, power * ny);
       if ((j === flyOverCutoff) && (vertices[i].x === 0)) {
         centerVertices.push(vertices[i]);
-        splineVertices.push(new THREE.Vector2(vertices[i].z, e * multiplier));
+        splineVertices.push(new THREE.Vector2(vertices[i].z, Math.max(e * multiplier + flyBuffer * (1 + Math.random() / 20), oceanY + oceanFlyBuffer)));
       }
     }
 
@@ -95,10 +95,10 @@ var createWorld = (options) => {
     //vertices[i].y = vertices[i].z;
     //vertices[i].y = 0;
 
-//    if (vertices[i].x === 0) {
-//      let zSpot =  (height /2) - vertices[i].z;
-//      balloonPositions[zSpot] = vertices[i].y;
-//    }
+    //    if (vertices[i].x === 0) {
+    //      let zSpot =  (height /2) - vertices[i].z;
+    //      balloonPositions[zSpot] = vertices[i].y;
+    //    }
     maxY = (maxY < vertices[i].y ? vertices[i].y : maxY);
     minY = (minY > vertices[i].y ? vertices[i].y : minY);
   }
@@ -192,7 +192,7 @@ var createWorld = (options) => {
     groundCurve : groundCurve,
     splineObject: splineObject
   });
-    
+  
 };
 
 function render() {
@@ -210,9 +210,9 @@ function render() {
   let start = scenery.centerVertices[index].y;
   let end = scenery.centerVertices[index + 1].y;
   let camY = ((end - start) * percentage) + start;
-//  if (index < 5) {
-//    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
-//  }
+  //  if (index < 5) {
+  //    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
+  //  }
   
   let t = group.position.z / scenery.height;
   // let camPoint = scenery.groundCurve.getPoint(t);
@@ -224,7 +224,7 @@ function render() {
   }
   let camPoint = scenery.groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
-  camera.position.y = Math.max(camPoint.y + 4, oceanY + 1);
+  camera.position.y = camPoint.y;
   //console.log('zmap:', camZMap, 'camPoint:', camPoint);
 
   //group.position.z += 0.02;
@@ -265,6 +265,8 @@ console.log('Beginning world build.');
 const startTime = new Date().getTime();
 //const width = 200;
 const oceanY = -10;
+const flyBuffer = 5;
+const oceanFlyBuffer = 1;
 const width = 300;
 const height = width;
 const resolution = 120;
