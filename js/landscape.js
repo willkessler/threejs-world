@@ -68,27 +68,30 @@ var createWorld = (options) => {
   geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
   var vertices = geometry.vertices;
   balloonMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-  centerVertices = [];
+  let splineVertices = [];
+  const multiplier = 25;
+  const flyOverCutoff = 3;
+
   for (let i in vertices) {
-    if ((vertices[i].x === 0) && (vertices[i].z % 8 == 0)) {
-      centerVertices.push(vertices[i]);
-    }
-  }
-  
-  for (let i in vertices) {
+
     vertices[i].z = vertices[i].y;
-    var nx = (vertices[i].x + width/2)  / options.width ;
-    var ny = (vertices[i].z + height/2) / options.height ;
+    var nx = (vertices[i].x + width /  2)  / options.width ;
+    var ny = (vertices[i].z + height / 2)  / options.height ;
     //console.log('nx,ny:', nx,ny);
     e = 0;
     for (j = 0; j < noiseDepth; ++j) {
       power = Math.pow(2, j);
       e += 1/power * simplex.noise2D(power * nx, power * ny);
+      if ((j === flyOverCutoff) && (vertices[i].x === 0)) {
+        centerVertices.push(vertices[i]);
+        splineVertices.push(new THREE.Vector2(vertices[i].z, e * multiplier));
+      }
     }
+
     //    vertices[i].y = 25 * Math.pow(e, exponent);
     //console.log(vertices[i].x, vertices[i].z);
 
-    vertices[i].y = e * 15;
+    vertices[i].y = e * multiplier;
     //vertices[i].y = vertices[i].z;
     //vertices[i].y = 0;
 
@@ -104,7 +107,6 @@ var createWorld = (options) => {
   //  console.log(descendingSortedKeys);
   //  let camPositions = [];
 
-  let splineVertices = [];
   for (let v of centerVertices) {
     balloonGeometry = new THREE.BoxGeometry(0.1,.1,.1);
     balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
@@ -115,7 +117,6 @@ var createWorld = (options) => {
     balloon.position.z = v.z;
     options.group.add(balloon);
 
-    splineVertices.push(new THREE.Vector2(v.z, v.y));
 
   }
   
@@ -126,8 +127,7 @@ var createWorld = (options) => {
   var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff00ff, linewidth: 40 } );
   // Create the final object to add to the scene
   var splineObject = new THREE.Line( curveGeo, curveMaterial );
-  //splineObject.rotation.y = Math.PI / 4;
-  splineObject.position.y = 0.1;
+
   splineObject.rotation.y = Math.PI / -2;
   group.add(splineObject);
 
@@ -177,7 +177,7 @@ var createWorld = (options) => {
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
-  options.group.add(ocean);
+  //options.group.add(ocean);
   makeText('Udacity', options.group);
   options.scene.add(options.group);
 
@@ -224,7 +224,7 @@ function render() {
   }
   let camPoint = scenery.groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
-  camera.position.y = Math.max(camPoint.y + 5, 1);
+  camera.position.y = Math.max(camPoint.y + 4, -100);
   //console.log('zmap:', camZMap, 'camPoint:', camPoint);
 
   //group.position.z += 0.02;
@@ -267,6 +267,7 @@ const startTime = new Date().getTime();
 const width = 200;
 const height = width;
 const resolution = 120;
+let centerVertices = [];
 const scenery = 
   createWorld({
     width: width,
