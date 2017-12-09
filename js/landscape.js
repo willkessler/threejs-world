@@ -88,7 +88,8 @@ var createWorld = (options) => {
     //    vertices[i].y = 25 * Math.pow(e, exponent);
     //console.log(vertices[i].x, vertices[i].z);
 
-    vertices[i].y = e * 10;
+    vertices[i].y = e * 15;
+    //vertices[i].y = vertices[i].z;
     //vertices[i].y = 0;
 
 //    if (vertices[i].x === 0) {
@@ -122,10 +123,12 @@ var createWorld = (options) => {
   const curvePoints = groundCurve.getPoints(100);
   console.log('curvePoints:', curvePoints);
   const curveGeo = new THREE.BufferGeometry().setFromPoints( curvePoints );
-  var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+  var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff00ff, linewidth: 40 } );
   // Create the final object to add to the scene
   var splineObject = new THREE.Line( curveGeo, curveMaterial );
-  splineObject.rotation.y = Math.PI / 2;
+  //splineObject.rotation.y = Math.PI / 4;
+  splineObject.position.y = 0.1;
+  splineObject.rotation.y = Math.PI / -2;
   group.add(splineObject);
 
   const yRange = maxY - minY;
@@ -186,7 +189,8 @@ var createWorld = (options) => {
     ground: ground,
     ocean: ocean,
     centerVertices: centerVertices,
-    groundCurve : groundCurve
+    groundCurve : groundCurve,
+    splineObject: splineObject
   });
     
 };
@@ -206,11 +210,23 @@ function render() {
   let start = scenery.centerVertices[index].y;
   let end = scenery.centerVertices[index + 1].y;
   let camY = ((end - start) * percentage) + start;
-  if (index < 5) {
-    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
+//  if (index < 5) {
+//    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
+//  }
+  
+  let t = group.position.z / scenery.height;
+  // let camPoint = scenery.groundCurve.getPoint(t);
+  //scenery.splineObject.rotation.y += 0.005;
+  //camera.position.y = camPoint.y;
+  if (camZMap < 1-0.001) {
+    camZMap += 0.0005;
   }
-  camera.position.y = camY;
-  group.position.z += 0.02;
+  let camPoint = scenery.groundCurve.getPoint(camZMap);
+  camera.position.z = camPoint.x ;
+  camera.position.y = camPoint.y + 5;
+  //console.log('zmap:', camZMap, 'camPoint:', camPoint);
+
+  //group.position.z += 0.02;
   //  console.log('Group Z:', group.position.z);
   //  camera.position.y += 0.08;
   //  camera.rotation.z += cam_zrot;
@@ -249,7 +265,7 @@ const startTime = new Date().getTime();
 //const width = 200;
 const width = 100;
 const height = width;
-const resolution = 100;
+const resolution = 200;
 const scenery = 
   createWorld({
     width: width,
@@ -269,8 +285,10 @@ renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
 
-camera.position.z = 6;
-camera.position.y = scenery.centerVertices[0].y;
+const camZOffset = 70;
+let camZMap = 0;
+camera.position.z = camZOffset;
+camera.position.y = 20;
 let cam_posy = -0.5;
 const cam_zrot = -0.0015;
 const squareSize = width / resolution;
