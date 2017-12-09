@@ -87,32 +87,47 @@ var createWorld = (options) => {
     }
     //    vertices[i].y = 25 * Math.pow(e, exponent);
     //console.log(vertices[i].x, vertices[i].z);
+
     vertices[i].y = e * 10;
     //vertices[i].y = 0;
-    if (vertices[i].x === 0) {
-      let zSpot =  (height /2) - vertices[i].z;
-      balloonPositions[zSpot] = vertices[i].y;
-    }
+
+//    if (vertices[i].x === 0) {
+//      let zSpot =  (height /2) - vertices[i].z;
+//      balloonPositions[zSpot] = vertices[i].y;
+//    }
     maxY = (maxY < vertices[i].y ? vertices[i].y : maxY);
     minY = (minY > vertices[i].y ? vertices[i].y : minY);
   }
 
-  /*
-  const descendingSortedKeys = Object.keys(balloonPositions).sort(function(a,b){return a-b});
-  console.log(descendingSortedKeys);
-  let camPositions = [];
-  */
+  //  const descendingSortedKeys = Object.keys(balloonPositions).sort(function(a,b){return a-b});
+  //  console.log(descendingSortedKeys);
+  //  let camPositions = [];
+
+  let splineVertices = [];
   for (let v of centerVertices) {
-    balloonGeometry = new THREE.BoxGeometry(2,2,.1);
+    balloonGeometry = new THREE.BoxGeometry(0.1,.1,.1);
     balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
     balloon.position.x = 0;
-    balloon.position.y = v.y + 2;
+    balloon.position.y = v.y ;
     //console.log('h',bk, balloonPositions[bk]);
     //balloon.position.z =  cp * (height / resolution) - (height / 2);
     balloon.position.z = v.z;
     options.group.add(balloon);
+
+    splineVertices.push(new THREE.Vector2(v.z, v.y));
+
   }
   
+  const groundCurve = new THREE.SplineCurve(splineVertices);
+  const curvePoints = groundCurve.getPoints(100);
+  console.log('curvePoints:', curvePoints);
+  const curveGeo = new THREE.BufferGeometry().setFromPoints( curvePoints );
+  var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+  // Create the final object to add to the scene
+  var splineObject = new THREE.Line( curveGeo, curveMaterial );
+  splineObject.rotation.y = Math.PI / 2;
+  group.add(splineObject);
+
   const yRange = maxY - minY;
   const snowRange = yRange / 8;
   const beachRange = yRange / 25;
@@ -144,13 +159,13 @@ var createWorld = (options) => {
   const ground = new THREE.Mesh(geometry, material);
   geometry.computeVertexNormals();
   ground.geometry.colorsNeedUpdate = true;
-//  ground.position.z = -50;
+  //ground.position.z = -50;
 
   const oceanGeometry = new THREE.PlaneGeometry(width,height,1,1);
   const oceanVertices = oceanGeometry.vertices;
   for (let i in oceanVertices) {
     oceanVertices[i].z = oceanVertices[i].y;
-    oceanVertices[i].y = 1;
+    oceanVertices[i].y = 0;
   }
 
   // https://stackoverflow.com/questions/44749446/enable-smooth-shading-with-three-js
@@ -159,9 +174,10 @@ var createWorld = (options) => {
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
-  options.group.add(ocean);
+  //options.group.add(ocean);
   //makeText('Udacity', options.group);
   options.scene.add(options.group);
+
 
   return ({
     width: width,
@@ -169,7 +185,8 @@ var createWorld = (options) => {
     resolution: resolution,
     ground: ground,
     ocean: ocean,
-    camPositions: balloonPositions
+    centerVertices: centerVertices,
+    groundCurve : groundCurve
   });
     
 };
@@ -181,11 +198,19 @@ function render() {
   cam_posy = (camera.position.y > 10 ? -cam_posy : cam_posy);
   cam_posy = (Math.abs(camera.position.y) > 0.2 ? -cam_zrot: cam_zrot);
   
-  //group.position.z += 0.01;
-  let index = Math.floor(group.position.z / scenery.height * scenery.resolution);
-  let camY = scenery.camPositions[index];
-  //console.log('z:',group.position.z, 'index:', index, 'camY:', camY);
-  //camera.position.y = camY;
+  //camera.position.z += 0.005;
+  let squareJump = 3;
+  let oneSquare = scenery.height / scenery.resolution;
+  let index = Math.floor((group.position.z + squareJump * oneSquare) / scenery.height * scenery.resolution) + squareJump;
+  let percentage = (group.position.z - (oneSquare * index)) / oneSquare;
+  let start = scenery.centerVertices[index].y;
+  let end = scenery.centerVertices[index + 1].y;
+  let camY = ((end - start) * percentage) + start;
+  if (index < 5) {
+    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
+  }
+  camera.position.y = camY;
+  group.position.z += 0.02;
   //  console.log('Group Z:', group.position.z);
   //  camera.position.y += 0.08;
   //  camera.rotation.z += cam_zrot;
@@ -221,8 +246,8 @@ scene.add( light );
 
 console.log('Beginning world build.');
 const startTime = new Date().getTime();
-const width = 200;
-//const width = 100;
+//const width = 200;
+const width = 100;
 const height = width;
 const resolution = 100;
 const scenery = 
@@ -244,9 +269,8 @@ renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
 
-//camera.position.z = 5;
-camera.position.z = height - height /4;
-camera.position.y = 10;
+camera.position.z = 6;
+camera.position.y = scenery.centerVertices[0].y;
 let cam_posy = -0.5;
 const cam_zrot = -0.0015;
 const squareSize = width / resolution;
