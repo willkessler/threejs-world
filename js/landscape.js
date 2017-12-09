@@ -61,7 +61,7 @@ var createWorld = (options) => {
   let e,j,power;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
-  const noiseDepth = 20;
+  const noiseDepth = 10;
   const exponent = 2;
   let balloonPositions = {};
   let vertex,face, balloonGeometry, balloonMaterial, balloon;
@@ -168,7 +168,7 @@ var createWorld = (options) => {
   const oceanVertices = oceanGeometry.vertices;
   for (let i in oceanVertices) {
     oceanVertices[i].z = oceanVertices[i].y;
-    oceanVertices[i].y = 0;
+    oceanVertices[i].y = oceanY;
   }
 
   // https://stackoverflow.com/questions/44749446/enable-smooth-shading-with-three-js
@@ -177,7 +177,7 @@ var createWorld = (options) => {
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
-  //options.group.add(ocean);
+  options.group.add(ocean);
   makeText('Udacity', options.group);
   options.scene.add(options.group);
 
@@ -224,7 +224,7 @@ function render() {
   }
   let camPoint = scenery.groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
-  camera.position.y = Math.max(camPoint.y + 4, -100);
+  camera.position.y = Math.max(camPoint.y + 4, oceanY + 1);
   //console.log('zmap:', camZMap, 'camPoint:', camPoint);
 
   //group.position.z += 0.02;
@@ -264,7 +264,8 @@ scene.add( light );
 console.log('Beginning world build.');
 const startTime = new Date().getTime();
 //const width = 200;
-const width = 200;
+const oceanY = -10;
+const width = 300;
 const height = width;
 const resolution = 120;
 let centerVertices = [];
@@ -280,7 +281,7 @@ const endTime = new Date().getTime();
 console.log('World built in:', (endTime - startTime)/1000, 'seconds');
 
 
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
 var renderer = new THREE.WebGLRenderer({alpha:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xffffff, 1)
