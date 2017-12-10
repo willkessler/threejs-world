@@ -173,7 +173,7 @@ var createWorld = (options) => {
 
   // https://stackoverflow.com/questions/44749446/enable-smooth-shading-with-three-js
   // https://stackoverflow.com/questions/15994944/transparent-objects-in-threejs
-  oceanMaterial = new THREE.MeshBasicMaterial({color: 0x1155dd, side: THREE.DoubleSide, transparent: true, opacity: 0.85});
+  oceanMaterial = new THREE.MeshBasicMaterial({color: 0x1155dd, side: THREE.DoubleSide, transparent: true, opacity: 0.88});
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
   options.group.add(ground);
@@ -198,6 +198,7 @@ var createWorld = (options) => {
 function render() {
   requestAnimationFrame(render);
   //  camera.position.y += cam_posy;
+/*
   cam_posy = (camera.position.y < 5 ? -cam_posy : cam_posy);
   cam_posy = (camera.position.y > 10 ? -cam_posy : cam_posy);
   cam_posy = (Math.abs(camera.position.y) > 0.2 ? -cam_zrot: cam_zrot);
@@ -215,6 +216,7 @@ function render() {
   //  }
   
   let t = group.position.z / scenery.height;
+  */
   // let camPoint = scenery.groundCurve.getPoint(t);
   //scenery.splineObject.rotation.y += 0.005;
   //camera.position.y = camPoint.y;
@@ -222,6 +224,8 @@ function render() {
   if (camZMap < 1-zMapInc) {
     camZMap += zMapInc;
   }
+
+
   let camPoint = scenery.groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
   camera.position.y = camPoint.y;
@@ -247,7 +251,7 @@ function render() {
 
 var simplex = new SimplexNoise();
 var scene = new THREE.Scene();
-//scene.fog = new THREE.FogExp2( 0xffffff, 0.0075 );
+scene.fog = new THREE.FogExp2( 0xffffff, 0.0075 );
 
 var group = new THREE.Group();
 
@@ -268,7 +272,7 @@ const oceanY = -10;
 const flyBuffer = 5;
 const oceanFlyBuffer = 1;
 const width = 300;
-const height = width;
+const height = width ;
 const resolution = 120;
 let centerVertices = [];
 const scenery = 
