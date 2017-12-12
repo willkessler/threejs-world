@@ -160,9 +160,9 @@ var createWorld = (options) => {
   // See: http://blog.mastermaps.com/2012/06/creating-color-relief-and-slope-shading.html
   const colorRanges = 
     {
-      'r': [new THREE.Vector2(0,90), new THREE.Vector2(1300,240), new THREE.Vector2(1700,230),  new THREE.Vector2(2500, 255) ],
-      'g': [new THREE.Vector2(0,255), new THREE.Vector2(1300,250), new THREE.Vector2(1700,220), new THREE.Vector2(2500,255)],
-      'b': [new THREE.Vector2(0,90), new THREE.Vector2(1300,160), new THREE.Vector2(1700,170),  new THREE.Vector2(2500,255)]
+      'r': [ new THREE.Vector2(0,165), new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255) ],
+      'g': [ new THREE.Vector2(0,175), new THREE.Vector2(5,255), new THREE.Vector2(60,240),  new THREE.Vector2(90,255)],
+      'b': [ new THREE.Vector2(0,42),  new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255)]
     };
   const colorCurves = 
     {
@@ -173,16 +173,17 @@ var createWorld = (options) => {
 
   console.log('adding centroids.');
   let faceCtr = 0;
-  let colorRange = maxY - minY;
+  //let colorRange = maxY - minY;
+  let colorRange = maxY;
   let t, hexColor,hexColorStr;
   let rVal, gVal, bVal;
   for (let faceId in geometry.faces) {
     face = geometry.faces[faceId];
     vertex = geometry.vertices[face.a];
     t = Math.max(0,vertex.y) / colorRange;
-    rVal = parseInt(colorCurves.r.getPoint(t).y);
-    gVal = parseInt(colorCurves.g.getPoint(t).y);
-    bVal = parseInt(colorCurves.b.getPoint(t).y);
+    rVal = parseInt(Math.max(0, Math.min(255, colorCurves.r.getPoint(t).y)));
+    gVal = parseInt(Math.max(0, Math.min(255, colorCurves.g.getPoint(t).y)));
+    bVal = parseInt(Math.max(0, Math.min(255,colorCurves.b.getPoint(t).y)));
     hexColorStr = rgbToHexValue(rVal) + rgbToHexValue(gVal) + rgbToHexValue(bVal);
     hexColor = parseInt(hexColorStr, 16);
     geometry.faces[faceId].color.setHex(hexColor);
@@ -194,7 +195,8 @@ var createWorld = (options) => {
     } else {
       geometry.faces[faceId].color.setHex(grass);
     }
-*/
+    */
+
     face.centroid = new THREE.Vector3( 0, 0, 0 );
     face.centroid.add( geometry.vertices[ face.a ] );
     face.centroid.add( geometry.vertices[ face.b ] );
@@ -330,7 +332,7 @@ function render() {
 
 var simplex = new SimplexNoise();
 var scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
+scene.fog = new THREE.FogExp2( 0xffffff, 0.008 );
 
 var group = new THREE.Group();
 
