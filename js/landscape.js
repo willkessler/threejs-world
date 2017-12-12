@@ -174,13 +174,13 @@ var createWorld = (options) => {
   console.log('adding centroids.');
   let faceCtr = 0;
   //let colorRange = maxY - minY;
-  let colorRange = maxY;
+  let colorRange = maxY - oceanY;
   let t, hexColor,hexColorStr;
   let rVal, gVal, bVal;
   for (let faceId in geometry.faces) {
     face = geometry.faces[faceId];
     vertex = geometry.vertices[face.a];
-    t = Math.max(0,vertex.y) / colorRange;
+    t = (Math.max(oceanY,vertex.y) - oceanY) / colorRange;
     rVal = parseInt(Math.max(0, Math.min(255, colorCurves.r.getPoint(t).y)));
     gVal = parseInt(Math.max(0, Math.min(255, colorCurves.g.getPoint(t).y)));
     bVal = parseInt(Math.max(0, Math.min(255,colorCurves.b.getPoint(t).y)));
