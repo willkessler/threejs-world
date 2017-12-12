@@ -14,6 +14,15 @@
 // boats
 // trees
 
+// https://campushippo.com/lessons/how-to-convert-rgb-colors-to-hexadecimal-with-javascript-78219fdb
+var rgbToHexValue = function (rgb) { 
+  var hex = Number(rgb).toString(16);
+  if (hex.length < 2) {
+    hex = "0" + hex;
+  }
+  return hex;
+};
+
 // https://www.awwwards.com/creating-3d-cube-a-practical-guide-to-three-js-with-live-demo.html
 var getLorem = () => {
   url = 'https://baconipsum.com/api/?type=all-meat&paras=1&start-with-lorem=1&format=html';
@@ -55,13 +64,16 @@ var makeText = (text, group) => {
 }
 
 var createWorld = (options) => {
+  console.log('Beginning world build.');
+  const startTime = new Date().getTime();
+
   const width = options.width || 200;
   const height = options.height || 200;
   const resolution = options.resolution || 125;
   let e,j,power;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
-  const noiseDepth = 10;
+  const noiseDepth = 7;
   const exponent = 2;
   let balloonPositions = {};
   let vertex,face, balloonGeometry, balloonMaterial, balloon;
@@ -72,6 +84,7 @@ var createWorld = (options) => {
   const multiplier = 25;
   const flyOverCutoff = 3;
 
+  console.log('building terrain');
   for (let i in vertices) {
 
     vertices[i].z = vertices[i].y;
@@ -102,11 +115,13 @@ var createWorld = (options) => {
     maxY = (maxY < vertices[i].y ? vertices[i].y : maxY);
     minY = (minY > vertices[i].y ? vertices[i].y : minY);
   }
+  console.log('done building terrain.');
 
   //  const descendingSortedKeys = Object.keys(balloonPositions).sort(function(a,b){return a-b});
   //  console.log(descendingSortedKeys);
   //  let camPositions = [];
 
+  console.log('adding balloons');
   for (let v of centerVertices) {
     balloonGeometry = new THREE.BoxGeometry(0.1,.1,.1);
     balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
@@ -116,10 +131,10 @@ var createWorld = (options) => {
     //balloon.position.z =  cp * (height / resolution) - (height / 2);
     balloon.position.z = v.z;
     options.group.add(balloon);
-
-
   }
-  
+  console.log('done adding balloons');
+
+  console.log('adding spline.');
   const groundCurve = new THREE.SplineCurve(splineVertices);
   const curvePoints = groundCurve.getPoints(100);
   console.log('curvePoints:', curvePoints);
@@ -127,6 +142,8 @@ var createWorld = (options) => {
   var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff00ff, linewidth: 40 } );
   // Create the final object to add to the scene
   var splineObject = new THREE.Line( curveGeo, curveMaterial );
+  console.log('done adding spline');
+
 
   splineObject.rotation.y = Math.PI / -2;
   group.add(splineObject);
@@ -139,11 +156,37 @@ var createWorld = (options) => {
   const sienna = 0xA0522D;
   const beach = 0xffff00;
   const grass = 0x00dd00;
+  
+  // See: http://blog.mastermaps.com/2012/06/creating-color-relief-and-slope-shading.html
+  const colorRanges = 
+    {
+      'r': [new THREE.Vector2(0,90), new THREE.Vector2(1300,240), new THREE.Vector2(1700,230),  new THREE.Vector2(2500, 255) ],
+      'g': [new THREE.Vector2(0,255), new THREE.Vector2(1300,250), new THREE.Vector2(1700,220), new THREE.Vector2(2500,255)],
+      'b': [new THREE.Vector2(0,90), new THREE.Vector2(1300,160), new THREE.Vector2(1700,170),  new THREE.Vector2(2500,255)]
+    };
+  const colorCurves = 
+    {
+      'r': new THREE.SplineCurve(colorRanges.r),
+      'g': new THREE.SplineCurve(colorRanges.g),
+      'b': new THREE.SplineCurve(colorRanges.b)
+    };
 
+  console.log('adding centroids.');
   let faceCtr = 0;
+  let colorRange = maxY - minY;
+  let t, hexColor,hexColorStr;
+  let rVal, gVal, bVal;
   for (let faceId in geometry.faces) {
     face = geometry.faces[faceId];
     vertex = geometry.vertices[face.a];
+    t = Math.max(0,vertex.y) / colorRange;
+    rVal = parseInt(colorCurves.r.getPoint(t).y);
+    gVal = parseInt(colorCurves.g.getPoint(t).y);
+    bVal = parseInt(colorCurves.b.getPoint(t).y);
+    hexColorStr = rgbToHexValue(rVal) + rgbToHexValue(gVal) + rgbToHexValue(bVal);
+    hexColor = parseInt(hexColorStr, 16);
+    geometry.faces[faceId].color.setHex(hexColor);
+    /*
     if (vertex.y > maxY - snowRange) {
       geometry.faces[faceId].color.setHex(snow);
     } else if (vertex.y < minY + beachRange) {
@@ -151,6 +194,7 @@ var createWorld = (options) => {
     } else {
       geometry.faces[faceId].color.setHex(grass);
     }
+*/
     face.centroid = new THREE.Vector3( 0, 0, 0 );
     face.centroid.add( geometry.vertices[ face.a ] );
     face.centroid.add( geometry.vertices[ face.b ] );
@@ -158,6 +202,8 @@ var createWorld = (options) => {
     face.centroid.divideScalar( 3 );
     faceCtr = (faceCtr == resolution ? 0 : faceCtr + 1);
   }
+  console.log('done adding centroids.');
+
   const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors });
   const ground = new THREE.Mesh(geometry, material);
   geometry.computeVertexNormals();
@@ -181,6 +227,8 @@ var createWorld = (options) => {
   makeText('Udacity', options.group);
   options.scene.add(options.group);
 
+  const endTime = new Date().getTime();
+  console.log('World built in:', (endTime - startTime)/1000, 'seconds');
 
   return ({
     width: width,
@@ -198,27 +246,27 @@ var createWorld = (options) => {
 function render() {
   requestAnimationFrame(render);
   //  camera.position.y += cam_posy;
-/*
-  cam_posy = (camera.position.y < 5 ? -cam_posy : cam_posy);
-  cam_posy = (camera.position.y > 10 ? -cam_posy : cam_posy);
-  cam_posy = (Math.abs(camera.position.y) > 0.2 ? -cam_zrot: cam_zrot);
-  
-  //camera.position.z += 0.005;
-  let squareJump = 3;
-  let oneSquare = scenery.height / scenery.resolution;
-  let index = Math.floor((group.position.z + squareJump * oneSquare) / scenery.height * scenery.resolution) + squareJump;
-  let percentage = (group.position.z - (oneSquare * index)) / oneSquare;
-  let start = scenery.centerVertices[index].y;
-  let end = scenery.centerVertices[index + 1].y;
-  let camY = ((end - start) * percentage) + start;
-  //  if (index < 5) {
-  //    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
-  //  }
-  
-  let t = group.position.z / scenery.height;
-  */
-  // let camPoint = scenery.groundCurve.getPoint(t);
-  //scenery.splineObject.rotation.y += 0.005;
+  /*
+     cam_posy = (camera.position.y < 5 ? -cam_posy : cam_posy);
+     cam_posy = (camera.position.y > 10 ? -cam_posy : cam_posy);
+     cam_posy = (Math.abs(camera.position.y) > 0.2 ? -cam_zrot: cam_zrot);
+     
+     //camera.position.z += 0.005;
+     let squareJump = 3;
+     let oneSquare = worlds[currentWorld].height / worlds[currentWorld].resolution;
+     let index = Math.floor((group.position.z + squareJump * oneSquare) / worlds[currentWorld].height * worlds[currentWorld].resolution) + squareJump;
+     let percentage = (group.position.z - (oneSquare * index)) / oneSquare;
+     let start = worlds[currentWorld].centerVertices[index].y;
+     let end = worlds[currentWorld].centerVertices[index + 1].y;
+     let camY = ((end - start) * percentage) + start;
+     //  if (index < 5) {
+     //    console.log('z:',group.position.z, 'index:', index, 'range:', start,end, 'percentage:', percentage,  'camY:', camY);
+     //  }
+     
+     let t = group.position.z / worlds[currentWorld].height;
+   */
+  // let camPoint = worlds[currentWorld].groundCurve.getPoint(t);
+  //worlds[currentWorld].splineObject.rotation.y += 0.005;
   //camera.position.y = camPoint.y;
   let zMapInc = 0.0009;
   if (camZMap < 1-zMapInc) {
@@ -226,10 +274,40 @@ function render() {
   }
 
 
-  let camPoint = scenery.groundCurve.getPoint(camZMap);
+  let camPoint = worlds[currentWorld].groundCurve.getPoint(camZMap);
   camera.position.z = camPoint.x ;
   camera.position.y = camPoint.y;
   //console.log('zmap:', camZMap, 'camPoint:', camPoint);
+
+  let power;
+  const nx = Math.random(), ny = Math.random();
+  const noiseDepth = 10;
+  let e;
+  for (let i = 0; i < 20; ++i) {
+    let e = 0;
+    for (let j = 0; j < noiseDepth; ++j) {
+      power = Math.pow(2, j);
+      e += 1/power * simplex.noise2D(power * nx, power * ny);
+    }
+    randos.push(e);
+  }
+  //console.log('randos size:', randos.length);
+
+  /*
+  if ((worlds[1] === undefined) && (Math.abs(1-camera.position.z) < 2)) {
+    console.log('creating second world, cam pos:', camera.position.z);
+    worlds[1] = 
+      createWorld({
+        width: width,
+        height: height,
+        zOffset : 0,
+        resolution: resolution,
+        scene:scene,
+        group:group
+      });
+  }
+  */
+
 
   //group.position.z += 0.02;
   //  console.log('Group Z:', group.position.z);
@@ -244,6 +322,7 @@ function render() {
   //  cube.scale.x += 0.002;
   //  cube.scale.y -= 0.005;
   renderer.render(scene, camera);
+
 };
 
 // Simplex noise:
@@ -251,7 +330,7 @@ function render() {
 
 var simplex = new SimplexNoise();
 var scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2( 0xffffff, 0.0075 );
+scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
 
 var group = new THREE.Group();
 
@@ -265,8 +344,6 @@ light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-console.log('Beginning world build.');
-const startTime = new Date().getTime();
 //const width = 200;
 const oceanY = -10;
 const flyBuffer = 5;
@@ -275,16 +352,17 @@ const width = 300;
 const height = width ;
 const resolution = 120;
 let centerVertices = [];
-const scenery = 
+let worlds = [];
+let currentWorld = 0;
+worlds[0] = 
   createWorld({
     width: width,
     height: height,
+    zOffset : 0,
     resolution: resolution,
     scene:scene,
     group:group
   });
-const endTime = new Date().getTime();
-console.log('World built in:', (endTime - startTime)/1000, 'seconds');
 
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
@@ -296,6 +374,7 @@ document.body.appendChild(renderer.domElement);
 
 const camZOffset = 70;
 let camZMap = 0;
+let randos = [];
 camera.position.z = camZOffset;
 camera.position.y = 20;
 let cam_posy = -0.5;
@@ -304,8 +383,8 @@ const squareSize = width / resolution;
 const numSquares = width / squareSize;
 midSquare = Math.floor(resolution / 2);
 console.log('numSquares:', numSquares, 'midSquare:', midSquare);
-let camYMax = scenery.ground.geometry.vertices[midSquare].y;
+let camYMax = worlds[currentWorld].ground.geometry.vertices[midSquare].y;
 console.log('yMax:', camYMax);
 
-render(scenery);
+render(worlds[currentWorld]);
 getLorem();
