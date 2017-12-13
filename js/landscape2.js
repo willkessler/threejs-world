@@ -63,6 +63,8 @@ var makeText = (text, group) => {
 
 }
 
+
+
 var createWorld = (options) => {
   console.log('Beginning world build.');
   const startTime = new Date().getTime();
@@ -77,7 +79,7 @@ var createWorld = (options) => {
   const exponent = 2;
   let balloonPositions = {};
   let vertex,face, balloonGeometry, balloonMaterial, balloon;
-  geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
+  geometry = new THREE.PlaneGeometry(width, height, resolution, 2);
   var vertices = geometry.vertices;
   balloonMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
   let splineVertices = [];
@@ -105,7 +107,7 @@ var createWorld = (options) => {
     //    vertices[i].y = 25 * Math.pow(e, exponent);
     //console.log(vertices[i].x, vertices[i].z);
     
-    vertices[i].y = e * multiplier;
+    //vertices[i].y = e * multiplier;
     //vertices[i].y = vertices[i].z;
     //vertices[i].y = 0;
 
@@ -189,14 +191,14 @@ var createWorld = (options) => {
     hexColor = parseInt(hexColorStr, 16);
     geometry.faces[faceId].color.setHex(hexColor);
     /*
-    if (vertex.y > maxY - snowRange) {
-      geometry.faces[faceId].color.setHex(snow);
-    } else if (vertex.y < minY + beachRange) {
-      geometry.faces[faceId].color.setHex(beach);
-    } else {
-      geometry.faces[faceId].color.setHex(grass);
-    }
-    */
+       if (vertex.y > maxY - snowRange) {
+       geometry.faces[faceId].color.setHex(snow);
+       } else if (vertex.y < minY + beachRange) {
+       geometry.faces[faceId].color.setHex(beach);
+       } else {
+       geometry.faces[faceId].color.setHex(grass);
+       }
+     */
 
     face.centroid = new THREE.Vector3( 0, 0, 0 );
     face.centroid.add( geometry.vertices[ face.a ] );
@@ -208,7 +210,7 @@ var createWorld = (options) => {
   console.log('done adding centroids.');
 
   //const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors, flatShading: false });
-  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors, flatShading: false });
+  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors, wireframe:true });
   const ground = new THREE.Mesh(geometry, material);
   geometry.computeVertexNormals();
   ground.geometry.colorsNeedUpdate = true;
@@ -229,8 +231,8 @@ var createWorld = (options) => {
   ground.position.z = options.zOffset;
   ocean.position.z = options.zOffset;
   options.group.add(ground);
-  options.group.add(ocean);
-  makeText('Udacity', options.group);
+  //options.group.add(ocean);
+  //makeText('Udacity', options.group);
   options.scene.add(options.group);
 
   const endTime = new Date().getTime();
@@ -249,23 +251,67 @@ var createWorld = (options) => {
   
 };
 
-function generateNoiseBatch() {
-  noiseX = (noiseX + 1 > width / resolution ? 0 : noiseX + 1);
-  noiseY = (noiseY + 1 > height / resolution ? 0 : noiseY + 1);
-
-  let power;
+var genNoise = (x,z,options) => {
   const noiseDepth = 10;
-  const batchSize = 20;
-  let e;
-  for (let i = 0; i < batchSize; ++i) {
-    e = 0;
-    for (let j = 0; j < noiseDepth; ++j) {
-      power = Math.pow(2, j);
-      e += 1/power * simplex.noise2D(power * noiseX, power * noiseY);
-    }
-    noiseValues.push(e);
+  const exponent = 2;
+  let e = 0,power,nx,ny,depth,totalDepth;
+  for (let j = 0; j < noiseDepth; ++j) {
+    power = Math.pow(exponent, j);
+    totalDepth = (options.depth * options.row) + options.depth;
+    nx = x  / options.width;
+    nz = z  / totalDepth;
+    e += 1/power * simplex.noise2D(power * nx, power * nz);
   }
-  // console.log('noiseValues size:', noiseValues.length);
+  return e * options.multiplier;
+}
+
+var createWorld2 = (options) => {
+  const width = options.width || 200;
+  const depth = options.depth || 200;
+  const resolution = options.resolution || 125;
+  const multiplier = options.multiplier || 25;
+  let maxY = -1.0e-5;
+  let minY = 1.0e+5;
+  let vertex,face;
+  let lastWorld, nx, ny, totalDepth;
+  geometry = new THREE.PlaneGeometry(width, depth, resolution, 1);
+  const vertices = geometry.vertices;
+  let halfVerticesCount = vertices.length / 2;
+  console.log('building terrain');
+  for (let i=0; i < vertices.length; ++i) {
+    //console.log('v:', vertices[i]);
+    vertices[i].z = vertices[i].y; // flip the planegeometry so it's flat
+    if (options.row === 0) {
+      // first row, all vertices are noisy
+      vertices[i].y = genNoise(vertices[i].x, vertices[i].z, options);
+    } else {
+      if (i < halfVerticesCount) {
+        // second row, closer verts match farther verts of first row.
+        lastWorld = options.worlds[options.row - 1];
+        //console.log(i, lastWorld.ground.geometry.vertices[i + halfVerticesCount - 1].y);
+        vertices[i].y = lastWorld.ground.geometry.vertices[i + halfVerticesCount].y;
+      } else {
+        vertices[i].y = genNoise(vertices[i].x, vertices[i].z, options);
+      }
+    }
+  }
+
+  //console.log('geometry:', geometry.vertices);
+  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide,/*wireframe:true,*/ vertexColors: THREE.FaceColors });
+  const ground = new THREE.Mesh(geometry, material);
+  geometry.computeVertexNormals();
+  ground.geometry.colorsNeedUpdate = true;
+  ground.position.z = options.zOffset;
+  options.group.add(ground);
+  options.scene.add(options.group);
+  
+  return ({
+    width: width,
+    depth: depth,
+    resolution: resolution,
+    ground: ground
+  });
+
 }
 
 function render() {
@@ -300,40 +346,7 @@ function render() {
     camZMap = 0;
   }
 
-  let camPoint = worlds[currentWorld].groundCurve.getPoint(camZMap);
-  camera.position.z = camPoint.x ;
-  camera.position.y = camPoint.y;
-  //console.log('zmap:', camZMap, 'camPoint:', camPoint);
-  //generateNoiseBatch();
-
-
-  if ((worlds[1] === undefined) && (Math.abs(1-camera.position.z) < 2)) {
-    console.log('Creating second world, cam pos:', camera.position.z);
-    worlds[1] = 
-      createWorld({
-        width: width,
-        height: height,
-        zOffset : -1 * height,
-        multiplier:25,
-        resolution: resolution,
-        scene:scene,
-        group:group
-      });
-  }
-
-
-  //group.position.z += 0.02;
-  //  console.log('Group Z:', group.position.z);
-  //  camera.position.y += 0.08;
-  //  camera.rotation.z += cam_zrot;
-  //  cam_zrot = (Math.abs(camera.rotation.z) > 0.2 ? -cam_zrot: cam_zrot);
-  //  if (camera.position.z % 50 === 0) {
-  //    plane.position.z -= 100;
-  //  }
-  //cube.rotation.x += 0.01;
-  //  cube.rotation.y += 0.01;
-  //  cube.scale.x += 0.002;
-  //  cube.scale.y -= 0.005;
+  //let camPoint = worlds[currentWorld].groundCurve.getPoint(camZMap);
   renderer.render(scene, camera);
 
 };
@@ -343,7 +356,7 @@ function render() {
 
 var simplex = new SimplexNoise();
 var scene = new THREE.Scene();
-// scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
+//scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
 
 var group = new THREE.Group();
 
@@ -357,29 +370,30 @@ light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-//const width = 200;
 const oceanY = -10;
 const flyBuffer = 5;
 const oceanFlyBuffer = 1;
 const width = 300;
-const height = width ;
+const depth = 10 ;
 const resolution = 120;
 let centerVertices = [];
 let worlds = [];
 let currentWorld = 0;
-let noiseValues = [];
-let noiseX = 0;
-let noiseY = 0;
-worlds[0] = 
-  createWorld({
-    width: width,
-    height: height,
-    zOffset: 0,
-    multiplier: 25,
-    resolution: resolution,
-    scene:scene,
-    group:group
-  });
+
+for (let row = 0; row < 20; ++row) {
+  worlds[row] = 
+    createWorld2({
+      width: width,
+      depth: depth,
+      row: row,
+      zOffset: -1 * depth * row ,
+      multiplier: 45,
+      resolution: resolution,
+      scene:scene,
+      group:group,
+      worlds: worlds
+    });
+}
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
 var renderer = new THREE.WebGLRenderer({alpha:true});
@@ -387,18 +401,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
-const camZOffset = 70;
+const camZOffset = 20;
 let camZMap = 0;
 camera.position.z = camZOffset;
+//camera.position.y = 100;
+//camera.rotation.x = -Math.PI/4;
 camera.position.y = 20;
-let cam_posy = -0.5;
-const cam_zrot = -0.0015;
-const squareSize = width / resolution;
-const numSquares = width / squareSize;
-midSquare = Math.floor(resolution / 2);
-console.log('numSquares:', numSquares, 'midSquare:', midSquare);
-let camYMax = worlds[currentWorld].ground.geometry.vertices[midSquare].y;
-console.log('yMax:', camYMax);
 
 render(worlds[currentWorld]);
-//getLorem();
