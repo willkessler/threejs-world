@@ -64,12 +64,13 @@ var makeText = (text, group) => {
 }
 
 var createWorld = (options) => {
-  console.log('Beginning world build.');
   const startTime = new Date().getTime();
+  console.log('Beginning world build at:', startTime/1000);
 
   const width = options.width || 200;
   const height = options.height || 200;
   const resolution = options.resolution || 125;
+  let nowTime;
   let e,j,power;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
@@ -85,6 +86,7 @@ var createWorld = (options) => {
   const flyOverCutoff = 3;
 
   console.log('building terrain');
+  const startInnerTime = new Date().getTime();
   for (let i in vertices) {
 
     vertices[i].z = vertices[i].y; // flip the planegeometry so it's flat
@@ -116,12 +118,14 @@ var createWorld = (options) => {
     maxY = (maxY < vertices[i].y ? vertices[i].y : maxY);
     minY = (minY > vertices[i].y ? vertices[i].y : minY);
   }
-  console.log('done building terrain.');
+  const endInnerTime = new Date().getTime();
+  console.log('done (inner) building terrain at:', (endInnerTime - startTime)/ 1000, 'seconds, time:', (endInnerTime - startInnerTime)/1000, 'seconds');
 
   //  const descendingSortedKeys = Object.keys(balloonPositions).sort(function(a,b){return a-b});
   //  console.log(descendingSortedKeys);
   //  let camPositions = [];
 
+/*
   console.log('adding balloons');
   for (let v of centerVertices) {
     balloonGeometry = new THREE.BoxGeometry(0.1,.1,.1);
@@ -133,7 +137,9 @@ var createWorld = (options) => {
     balloon.position.z = v.z;
     options.group.add(balloon);
   }
-  console.log('done adding balloons');
+  nowTime = new Date().getTime();
+  console.log('done adding balloons at:', (nowTime - startTime) / 1000);
+  */
 
   console.log('adding spline.');
   const groundCurve = new THREE.SplineCurve(splineVertices);
@@ -143,7 +149,8 @@ var createWorld = (options) => {
   var curveMaterial = new THREE.LineBasicMaterial( { color : 0xff00ff, linewidth: 40 } );
   // Create the final object to add to the scene
   var splineObject = new THREE.Line( curveGeo, curveMaterial );
-  console.log('done adding spline');
+  nowTime = new Date().getTime();
+  console.log('done adding spline at:', (nowTime - startTime) / 1000);
 
 
   splineObject.rotation.y = Math.PI / -2;
@@ -198,20 +205,29 @@ var createWorld = (options) => {
     }
     */
 
+    /*
     face.centroid = new THREE.Vector3( 0, 0, 0 );
     face.centroid.add( geometry.vertices[ face.a ] );
     face.centroid.add( geometry.vertices[ face.b ] );
     face.centroid.add( geometry.vertices[ face.c ] );
     face.centroid.divideScalar( 3 );
     faceCtr = (faceCtr == resolution ? 0 : faceCtr + 1);
+    */
   }
-  console.log('done adding centroids.');
+  nowTime = new Date().getTime();
+  console.log('done adding centroids at:', (nowTime - startTime) / 1000);
 
   //const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors, flatShading: false });
   const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, /*wireframe:true,*/ vertexColors: THREE.FaceColors, flatShading: false });
   const ground = new THREE.Mesh(geometry, material);
+
+  geometry.computeFaceNormals()
   geometry.computeVertexNormals();
   ground.geometry.colorsNeedUpdate = true;
+
+  nowTime = new Date().getTime();
+  console.log('done recalc normals at:', (nowTime - startTime) / 1000);
+
   //ground.position.z = -50;
 
   const oceanGeometry = new THREE.PlaneGeometry(width,height,1,1);
@@ -226,12 +242,21 @@ var createWorld = (options) => {
   oceanMaterial = new THREE.MeshBasicMaterial({color: 0x1155dd, side: THREE.DoubleSide, transparent: true, opacity: 0.88});
   const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
 
+  nowTime = new Date().getTime();
+  console.log('done ocean build at:', (nowTime - startTime) / 1000);
+
   ground.position.z = options.zOffset;
   ocean.position.z = options.zOffset;
   options.group.add(ground);
   options.group.add(ocean);
+
   makeText('Udacity', options.group);
+
+  nowTime = new Date().getTime();
+  console.log('done text build at:', (nowTime - startTime) / 1000);
+
   options.scene.add(options.group);
+
 
   const endTime = new Date().getTime();
   console.log('World built in:', (endTime - startTime)/1000, 'seconds');
