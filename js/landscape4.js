@@ -177,7 +177,7 @@ function modifyFirstRow() {
     bottomLeft = base * 3;
     bottomRight = (base + 2) * 3;
     bottomUpperTriangle = (base + 5) * 3;
-    offset = Math.floor(Math.random() * 20);
+    offset = Math.floor(Math.random() * 40);
     geometryBuffer.attributes.position.array[bottomLeft + 1] = offset;
     geometryBuffer.attributes.position.array[bottomRight + 1] = offset;
     geometryBuffer.attributes.position.array[bottomUpperTriangle + 1] = offset;
@@ -224,6 +224,7 @@ function render() {
     modifyFirstRow();
   } else {
     shiftBuffer();
+    modifyFirstRow();
   }
   row++;
 
@@ -293,7 +294,7 @@ document.body.appendChild(renderer.domElement);
 
 const camZOffset = 20;
 let camZMap = 0;
-camera.position.y = 20;
+camera.position.y = 30;
 camera.position.z = 130;
 //camera.position.y = 100;
 //camera.rotation.x = -Math.PI/4;
