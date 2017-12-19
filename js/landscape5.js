@@ -20,7 +20,7 @@ const genNoise = (x,z) => {
 
 const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
   console.log('x,z,val, multiplier, product:', x, z, val, multiplier, val * multiplier);
-  const offset = z * resolution + x;
+  const offset = (z * (resolution + 1)) + x;
   if (offset < vertices.length) {
     vertices[offset].y = val * multiplier;
   }
@@ -44,16 +44,17 @@ const createWorld = (options) => {
     vertices[i].y = 0;
   }
   let noiseZ;
-  for (let z = 0; z <= resolution + 1; ++z) {
+  for (let z = 0; z <= resolution; ++z) {
     noiseZ = options.index * resolution + z;
-    for (let x = 0; x <= resolution + 1; ++x) {
+    for (let x = 0; x <= resolution; ++x) {
       noiseVal = genNoise(x + 1,noiseZ);
       assignValToVertex(vertices, x, z, resolution, noiseVal, multiplier);
     }
   }
 
+  geometry.computeVertexNormals();
   geometry.elementsNeedUpdate = true;
-  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, wireframe:true, vertexColors: THREE.FaceColors });
+  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
   const ground = new THREE.Mesh(geometry, material);
 
   options.group.add(ground);
@@ -81,9 +82,9 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 200;
+const width = 300;
 const depth = 100 ;
-const resolution = 2;
+const resolution = 4;
 let worlds = [];
 let currentWorld = 0;
 
@@ -107,7 +108,7 @@ worlds[1] =
     width: width,
     depth: depth,
     index: 1,
-    zOffset : -1.5 * depth,
+    zOffset : -1.25 * depth,
     multiplier:25,
     resolution: resolution,
     scene:scene,
@@ -121,7 +122,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
-camera.position.y = 40;
-camera.position.z = 120;
+camera.position.y = 100;
+camera.position.z = 100;
+camera.rotation.x = -Math.PI / 4;
 
 render(worlds[currentWorld]);
