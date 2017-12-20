@@ -42,21 +42,23 @@ const createWorld = (options) => {
   console.log('building terrain');
   // Flip the planegeometry so it's flat.
   for (let i=0; i < vertices.length; ++i) {
-    vertices[i].z = vertices[i].y + options.zOffset + depth / resolution;
+    vertices[i].z = vertices[i].y;
   }
   let noiseZ;
   for (let z = 0, noiseZ; z <= resolution; ++z) {
-    noiseZ = Math.max(options.index * resolution, options.index * resolution + z + (options.index > 0 ? -1 : 0));
-    //console.log('index, z,noiseZ,resolution:', options.index, z, noiseZ, resolution);
+    noiseZ = options.index * resolution + z + (options.index > 0 ? -1 : 0);
     for (let x = 0; x <= resolution; ++x) {
       noiseVal = genNoise(x + 1,noiseZ, resolution, width, depth);
+      //console.log('x, z, noiseZ, noiseVal:', x, z, noiseZ, noiseVal);
       assignValToVertex(vertices, x, z, resolution, noiseVal, multiplier);
     }
   }
 
+  geometry.translate(0,(options.index === 0 ? 0 : -.1),(options.index === 0 ? 0 : -1 * (depth - (depth / resolution))));
   geometry.computeVertexNormals();
   geometry.elementsNeedUpdate = true;
-  const material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
+  const wireColor = (options.index === 0 ? '#00ff00' : '#ff0000');
+  const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
   const ground = new THREE.Mesh(geometry, material);
 
   options.group.add(ground);
@@ -84,9 +86,9 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 50;
-const depth = 50;
-const resolution = 2;
+const width = 400;
+const depth = 400;
+const resolution = 100;
 let worlds = [];
 let currentWorld = 0;
 
@@ -98,7 +100,7 @@ worlds[0] =
     depth: depth,
     index: 0,
     zOffset: 0,
-    multiplier: 15,
+    multiplier: 25,
     resolution: resolution,
     scene:scene,
     group:group
@@ -110,8 +112,8 @@ worlds[1] =
     width: width,
     depth: depth,
     index: 1,
-    zOffset : -1.1 * depth,
-    multiplier:15,
+    zOffset :  depth,
+    multiplier: 25,
     resolution: resolution,
     scene:scene,
     group:group
@@ -130,6 +132,6 @@ document.body.appendChild(renderer.domElement);
 //camera.rotation.x = -Math.PI / 4;
 
 camera.position.y = 20;
-camera.position.z = 30;
+camera.position.z = 40;
 
 render(worlds[currentWorld]);
