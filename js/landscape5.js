@@ -7,19 +7,21 @@ const rgbToHexValue = function (rgb) {
   return hex;
 };
 
-const genNoise = (x,z) => {
+const genNoise = (x,z, resolution, width, depth) => {
   const noiseDepth = 10;
   const exponent = 2;
-  let e = 0,power;
+  let e = 0,power, nx, nz;
   for (let i = 0; i < noiseDepth; ++i) {
     power = Math.pow(exponent, i);
-    e += 1/power * simplex.noise2D(power * x, power * z);
+    nx = ((x * (width / resolution)) + width / 2) / width;
+    nz = ((z * (depth / resolution)) + depth / 2) / depth;
+    e += 1/power * simplex.noise2D(power * nx, power * nz);
   }
   return e;
 }
 
 const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
-  console.log('x,z,val, multiplier, product:', x, z, val, multiplier, val * multiplier);
+  //console.log('x,z,val, multiplier, product:', x, z, val, multiplier, val * multiplier);
   const offset = (z * (resolution + 1)) + x;
   if (offset < vertices.length) {
     vertices[offset].y = val * multiplier;
@@ -40,14 +42,14 @@ const createWorld = (options) => {
   console.log('building terrain');
   // Flip the planegeometry so it's flat.
   for (let i=0; i < vertices.length; ++i) {
-    vertices[i].z = vertices[i].y + options.zOffset;
-    vertices[i].y = 0;
+    vertices[i].z = vertices[i].y + options.zOffset + depth / resolution;
   }
   let noiseZ;
-  for (let z = 0; z <= resolution; ++z) {
-    noiseZ = options.index * resolution + z;
+  for (let z = 0, noiseZ; z <= resolution; ++z) {
+    noiseZ = Math.max(options.index * resolution, options.index * resolution + z + (options.index > 0 ? -1 : 0));
+    //console.log('index, z,noiseZ,resolution:', options.index, z, noiseZ, resolution);
     for (let x = 0; x <= resolution; ++x) {
-      noiseVal = genNoise(x + 1,noiseZ);
+      noiseVal = genNoise(x + 1,noiseZ, resolution, width, depth);
       assignValToVertex(vertices, x, z, resolution, noiseVal, multiplier);
     }
   }
@@ -82,9 +84,9 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 300;
-const depth = 100 ;
-const resolution = 4;
+const width = 50;
+const depth = 50;
+const resolution = 2;
 let worlds = [];
 let currentWorld = 0;
 
@@ -96,7 +98,7 @@ worlds[0] =
     depth: depth,
     index: 0,
     zOffset: 0,
-    multiplier: 25,
+    multiplier: 15,
     resolution: resolution,
     scene:scene,
     group:group
@@ -108,12 +110,13 @@ worlds[1] =
     width: width,
     depth: depth,
     index: 1,
-    zOffset : -1.25 * depth,
-    multiplier:25,
+    zOffset : -1.1 * depth,
+    multiplier:15,
     resolution: resolution,
     scene:scene,
     group:group
   });
+
 
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
@@ -122,8 +125,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
-camera.position.y = 100;
-camera.position.z = 100;
-camera.rotation.x = -Math.PI / 4;
+//camera.position.y = 100;
+//camera.position.z = 80;
+//camera.rotation.x = -Math.PI / 4;
+
+camera.position.y = 20;
+camera.position.z = 30;
 
 render(worlds[currentWorld]);
