@@ -36,10 +36,11 @@ const createWorld = (options) => {
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
 
+  const veryStartTime = new Date().getTime();
   geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
   const vertices = geometry.vertices;
-  let halfVerticesCount = vertices.length / 2;
-  console.log('building terrain');
+  console.log('Building terrain.');
+  const startTime = new Date().getTime();
   // Flip the planegeometry so it's flat.
   for (let i=0; i < vertices.length; ++i) {
     vertices[i].z = vertices[i].y;
@@ -61,8 +62,17 @@ const createWorld = (options) => {
   const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
   const ground = new THREE.Mesh(geometry, material);
 
+  let endTime = new Date().getTime();
+  let elapsed = (endTime - startTime) / 1000;
+  console.log('World tweak time:', elapsed);
+
   options.group.add(ground);
   options.scene.add(options.group);
+
+  endTime = new Date().getTime();
+  elapsed = (endTime - startTime) / 1000;
+  elapsed = (endTime - veryStartTime) / 1000;
+  console.log('Full build time:', elapsed);
   
   return ({
     width: width,
@@ -86,13 +96,14 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 400;
-const depth = 400;
+const width = 300;
+const depth = 300;
 const resolution = 100;
 let worlds = [];
 let currentWorld = 0;
 
 const group = new THREE.Group();
+const multiplier = 50;
 
 worlds[0] = 
   createWorld({
@@ -100,7 +111,7 @@ worlds[0] =
     depth: depth,
     index: 0,
     zOffset: 0,
-    multiplier: 25,
+    multiplier: multiplier,
     resolution: resolution,
     scene:scene,
     group:group
@@ -112,8 +123,8 @@ worlds[1] =
     width: width,
     depth: depth,
     index: 1,
-    zOffset :  depth,
-    multiplier: 25,
+    zOffset : depth,
+    multiplier: multiplier,
     resolution: resolution,
     scene:scene,
     group:group
@@ -132,6 +143,6 @@ document.body.appendChild(renderer.domElement);
 //camera.rotation.x = -Math.PI / 4;
 
 camera.position.y = 20;
-camera.position.z = 40;
+camera.position.z = 100;
 
 render(worlds[currentWorld]);
