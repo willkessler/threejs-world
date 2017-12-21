@@ -7,17 +7,25 @@ const rgbToHexValue = function (rgb) {
   return hex;
 };
 
-const genNoise = (x,z, resolution, width, depth) => {
+const genNoise = (x,z, resolution, width, depth, splineVertices) => {
   const noiseDepth = 10;
   const exponent = 2;
-  let e = 0,power, nx, nz;
+  const flyOverResolution = 3;
+  let e = 0,power, nx, nz, flyOverVal;
   for (let i = 0; i < noiseDepth; ++i) {
     power = Math.pow(exponent, i);
     nx = ((x * (width / resolution)) + width / 2) / width;
     nz = ((z * (depth / resolution)) + depth / 2) / depth;
     e += 1/power * simplex.noise2D(power * nx, power * nz);
+    if (i === flyOverResolution) {
+      flyOverVal = e;
+    }
+
   }
-  return e;
+  return { 
+    val:e, 
+    flyOverVal: flyOverVal
+  } ;
 }
 
 const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
@@ -32,9 +40,13 @@ const createWorld = (options) => {
   const width = options.width || 200;
   const depth = options.depth || 200;
   const resolution = options.resolution || 125;
+  const oceanY = -10;
+  const flyBuffer = 5;
+  const oceanFlyBuffer = 1;
   let multiplier = options.multiplier || 25;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
+  let splineVertices = [];
 
   const veryStartTime = new Date().getTime();
   geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
@@ -45,13 +57,18 @@ const createWorld = (options) => {
   for (let i=0; i < vertices.length; ++i) {
     vertices[i].z = vertices[i].y;
   }
-  let noiseZ;
+  let noise, noiseZ;
   for (let z = 0, noiseZ; z <= resolution; ++z) {
     noiseZ = options.index * resolution + z + (options.index > 0 ? -1 : 0);
     for (let x = 0; x <= resolution; ++x) {
-      noiseVal = genNoise(x + 1,noiseZ, resolution, width, depth);
+      noise = genNoise(x + 1,noiseZ, resolution, width, depth, splineVertices);
       //console.log('x, z, noiseZ, noiseVal:', x, z, noiseZ, noiseVal);
-      assignValToVertex(vertices, x, z, resolution, noiseVal, multiplier);
+      if (x === resolution / 2) {
+        splineY = Math.max(noise.flyOverVal * multiplier + flyBuffer * (1 + Math.random() / 20), oceanY + oceanFlyBuffer);
+        splineVertices.push(new THREE.Vector2(x, splineY));
+        console.log('pushing onto spline x,flyOverVal:', x, splineY);
+      }
+      assignValToVertex(vertices, x, z, resolution, noise.val, multiplier);
     }
   }
 
@@ -74,11 +91,17 @@ const createWorld = (options) => {
   elapsed = (endTime - veryStartTime) / 1000;
   console.log('Full build time:', elapsed);
   
+  console.log('Adding spline.');
+  const groundSpline = new THREE.SplineCurve(splineVertices);
+  const curve = groundSpline.getPoints(100);
+  console.log('curve:', curve);
+
   return ({
     width: width,
     depth: depth,
     resolution: resolution,
-    ground: ground
+    ground: ground,
+    curve: curve
   });
 
 }
