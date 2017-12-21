@@ -40,7 +40,7 @@ const createWorld = (options) => {
   const width = options.width || 200;
   const depth = options.depth || 200;
   const resolution = options.resolution || 125;
-  const oceanY = -10;
+  const oceanY = -100;
   const flyBuffer = 5;
   const oceanFlyBuffer = 1;
   let multiplier = options.multiplier || 25;
@@ -65,8 +65,8 @@ const createWorld = (options) => {
       //console.log('x, z, noiseZ, noiseVal:', x, z, noiseZ, noiseVal);
       if (x === resolution / 2) {
         splineY = Math.max(noise.flyOverVal * multiplier + flyBuffer * (1 + Math.random() / 20), oceanY + oceanFlyBuffer);
-        splineVertices.push(new THREE.Vector2(x, splineY));
-        console.log('pushing onto spline x,flyOverVal:', x, splineY);
+        splineVertices.push(new THREE.Vector2(z * depth / resolution, splineY));
+        //console.log('pushing onto spline x,flyOverVal:', x, splineY);
       }
       assignValToVertex(vertices, x, z, resolution, noise.val, multiplier);
     }
@@ -93,21 +93,50 @@ const createWorld = (options) => {
   
   console.log('Adding spline.');
   const groundSpline = new THREE.SplineCurve(splineVertices);
-  const curve = groundSpline.getPoints(100);
-  console.log('curve:', curve);
+  //console.log(groundSpline.getPoints(10));
 
   return ({
     width: width,
     depth: depth,
     resolution: resolution,
-    ground: ground,
-    curve: curve
+    ground: {
+      mesh: ground,
+      spline: groundSpline
+    }
   });
 
 }
 
+const moveCamera = (camZMap,dbg) => {
+  //console.log('camZMap:', camZMap);
+  const camPoint = worlds[currentWorld].ground.spline.getPoint(camZMap);
+  camera.position.z = cameraStartZ - ((currentWorld * depth) + camPoint.x);
+  if (dbg) {
+    console.log('before jump:', camera.position.y);
+    console.log('after jump:', camPoint.y);
+  }
+  camera.position.y = camPoint.y;
+}
+
 const render = () => {
   requestAnimationFrame(render);
+
+  let dbg = false;
+  if (camZMap < 1-zMapInc) {
+    camZMap += zMapInc;
+  } else {
+    if (currentWorld === 0) {
+      dbg = true;
+      currentWorld = 1;
+      camZMap = 0;
+      zMapInc = 0.0005;
+    } else {
+      currentWorld = 0;
+      camZMap = 0;
+    }
+  }
+  moveCamera(camZMap,dbg);
+
   renderer.render(scene, camera);
 };
 
@@ -122,8 +151,11 @@ scene.add( light );
 const width = 300;
 const depth = 300;
 const resolution = 100;
+const cameraStartZ = 150;
 let worlds = [];
 let currentWorld = 0;
+let camZMap = 0;
+let zMapInc = 0.002;
 
 const group = new THREE.Group();
 const multiplier = 50;
@@ -166,6 +198,6 @@ document.body.appendChild(renderer.domElement);
 //camera.rotation.x = -Math.PI / 4;
 
 camera.position.y = 20;
-camera.position.z = 100;
+camera.position.z = cameraStartZ;
 
 render(worlds[currentWorld]);
