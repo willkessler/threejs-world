@@ -10,7 +10,7 @@ const rgbToHexValue = function (rgb) {
 const genNoise = (x,z, resolution, width, depth, splineVertices) => {
   const noiseDepth = 10;
   const exponent = 2;
-  const flyOverResolution = 3;
+  const flyOverResolution = 2;
   let e = 0,power, nx, nz, flyOverVal;
   for (let i = 0; i < noiseDepth; ++i) {
     power = Math.pow(exponent, i);
@@ -36,12 +36,15 @@ const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
   }
 }
 
+const rebuildWorldGeometry(index) {
+}
+
 const createWorld = (options) => {
   const width = options.width || 200;
   const depth = options.depth || 200;
   const resolution = options.resolution || 125;
   const oceanY = -100;
-  const flyBuffer = 7.5;
+  const flyBuffer = 9;
   const oceanFlyBuffer = 1;
   let multiplier = options.multiplier || 25;
   let maxY = -1.0e-5;
@@ -128,18 +131,22 @@ const render = () => {
   requestAnimationFrame(render);
 
   let dbg = false;
-  if (camZMap < 1-zMapInc) {
+  if (camZMap < 1 - zMapInc) {
     camZMap += zMapInc;
   } else {
+    camZMap = 0;
     if (currentWorld === 0) {
+      // we were on the first world. Swap to the second world by:
+      // translating the camera and the second world to the first world's spot.
+      // rebuild the first world and place it in the second world's swap.
       dbg = true;
       currentWorld = 1;
+      rebuildWorld(0);
       //camZMap = 0.05;
-      camZMap = 0;
       //zMapInc = 0.0005;
     } else {
       currentWorld = 0;
-      camZMap = 0;
+      rebuildWorld(1);
     }
   }
   moveCamera(camZMap,dbg);
@@ -165,7 +172,7 @@ let camZMap = 0.5;
 let lastYDiff = 0;
 let camYVel = 0;
 let camYAccel = 0;
-const camYDampener = 0.8;
+const camYDampener = 0.75;
 let zMapInc = 0.001;
 
 const group = new THREE.Group();
