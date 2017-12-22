@@ -41,7 +41,7 @@ const createWorld = (options) => {
   const depth = options.depth || 200;
   const resolution = options.resolution || 125;
   const oceanY = -100;
-  const flyBuffer = 5;
+  const flyBuffer = 7.5;
   const oceanFlyBuffer = 1;
   let multiplier = options.multiplier || 25;
   let maxY = -1.0e-5;
@@ -113,9 +113,15 @@ const moveCamera = (camZMap,dbg) => {
   camera.position.z = cameraStartZ - ((currentWorld * depth) + camPoint.x);
   if (dbg) {
     console.log('before jump:', camera.position.y);
-    console.log('after jump:', camPoint.y);
   }
-  camera.position.y = camPoint.y;
+  const camDiff = camPoint.y - camera.position.y;
+  camYAccel = camDiff / 10;
+  camera.position.y += camYVel;
+  camYVel += camYAccel;
+  camYVel *= camYDampener;
+  if (dbg) {
+    console.log('after jump, s0, s1, camDiff, y:', worlds[0].ground.spline.getPoint(1),worlds[1].ground.spline.getPoint(0),camDiff, camPoint.y);
+  }
 }
 
 const render = () => {
@@ -128,8 +134,9 @@ const render = () => {
     if (currentWorld === 0) {
       dbg = true;
       currentWorld = 1;
+      //camZMap = 0.05;
       camZMap = 0;
-      zMapInc = 0.0005;
+      //zMapInc = 0.0005;
     } else {
       currentWorld = 0;
       camZMap = 0;
@@ -154,11 +161,15 @@ const resolution = 100;
 const cameraStartZ = 150;
 let worlds = [];
 let currentWorld = 0;
-let camZMap = 0;
-let zMapInc = 0.002;
+let camZMap = 0.5;
+let lastYDiff = 0;
+let camYVel = 0;
+let camYAccel = 0;
+const camYDampener = 0.8;
+let zMapInc = 0.001;
 
 const group = new THREE.Group();
-const multiplier = 50;
+const multiplier = 40;
 
 worlds[0] = 
   createWorld({
@@ -197,7 +208,7 @@ document.body.appendChild(renderer.domElement);
 //camera.position.z = 80;
 //camera.rotation.x = -Math.PI / 4;
 
-camera.position.y = 20;
+camera.position.y = worlds[0].ground.spline.getPoint(camZMap).y;
 camera.position.z = cameraStartZ;
 
 render(worlds[currentWorld]);
