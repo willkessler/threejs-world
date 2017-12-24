@@ -36,33 +36,41 @@ const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
   }
 }
 
-const rebuildWorldGeometry(index) {
-}
-
-const createWorld = (options) => {
-  const width = options.width || 200;
-  const depth = options.depth || 200;
-  const resolution = options.resolution || 125;
+const updateWorld = (index) => {
+  const theWorld = worlds[index];
+  const width = theWorld.width;
+  const depth = theWorld.depth;
+  const resolution = theWorld.resolution;
+  const group = theWorld.group;
   const oceanY = -100;
   const flyBuffer = 9;
   const oceanFlyBuffer = 1;
-  let multiplier = options.multiplier || 25;
+  let geometry, vertices;
+  let multiplier = theWorld.multiplier || 25;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
   let splineVertices = [];
 
   const veryStartTime = new Date().getTime();
-  geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
-  const vertices = geometry.vertices;
+  const refreshing = (theWorld.ground.mesh !== undefined);
   console.log('Building terrain.');
-  const startTime = new Date().getTime();
-  // Flip the planegeometry so it's flat.
-  for (let i=0; i < vertices.length; ++i) {
-    vertices[i].z = vertices[i].y;
+  if (refreshing) {
+    geometry = theWorld.ground.geometry;
+    vertices = geometry.vertices;
+  } else {
+    geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
+    vertices = geometry.vertices;
+    // Flip the planegeometry so it's flat.
+    for (let i=0; i < vertices.length; ++i) {
+      vertices[i].z = vertices[i].y;
+    }
   }
+
+  const startTime = new Date().getTime();
+
   let noise, noiseZ;
   for (let z = 0, noiseZ; z <= resolution; ++z) {
-    noiseZ = options.index * resolution + z + (options.index > 0 ? -1 : 0);
+    noiseZ = index * resolution + z + (index > 0 ? -1 : 0);
     for (let x = 0; x <= resolution; ++x) {
       noise = genNoise(x + 1,noiseZ, resolution, width, depth, splineVertices);
       //console.log('x, z, noiseZ, noiseVal:', x, z, noiseZ, noiseVal);
@@ -75,19 +83,18 @@ const createWorld = (options) => {
     }
   }
 
-  geometry.translate(0,(options.index === 0 ? 0 : -.1),(options.index === 0 ? 0 : -1 * (depth - (depth / resolution))));
+  //geometry.translate(0,(index === 0 ? 0 : -.1),(index === 0 ? 0 : -1 * (depth - (depth / resolution))));
+  geometry.translate(0,0,((-1 * depth * index) + (depth/resolution)));
+  geometry.computeFaceNormals();
   geometry.computeVertexNormals();
   geometry.elementsNeedUpdate = true;
-  const wireColor = (options.index === 0 ? '#00ff00' : '#ff0000');
+  const wireColor = (index === 0 ? '#00ff00' : '#ff0000');
   const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
-  const ground = new THREE.Mesh(geometry, material);
+  const groundMesh = new THREE.Mesh(geometry, material);
 
   let endTime = new Date().getTime();
   let elapsed = (endTime - startTime) / 1000;
   console.log('World tweak time:', elapsed);
-
-  options.group.add(ground);
-  options.scene.add(options.group);
 
   endTime = new Date().getTime();
   elapsed = (endTime - startTime) / 1000;
@@ -98,21 +105,21 @@ const createWorld = (options) => {
   const groundSpline = new THREE.SplineCurve(splineVertices);
   //console.log(groundSpline.getPoints(10));
 
-  return ({
-    width: width,
-    depth: depth,
-    resolution: resolution,
-    ground: {
-      mesh: ground,
-      spline: groundSpline
-    }
-  });
+  if (theWorld.ground.mesh) {
+    group.remove(theWorld.ground.mesh);
+  }
+  group.add(groundMesh);
 
+  theWorld.ground = {
+    geometry: geometry,
+    mesh: groundMesh,
+    spline: groundSpline
+  }
 }
 
 const moveCamera = (camZMap,dbg) => {
   //console.log('camZMap:', camZMap);
-  const camPoint = worlds[currentWorld].ground.spline.getPoint(camZMap);
+  const camPoint = worlds[0].ground.spline.getPoint(camZMap);
   camera.position.z = cameraStartZ - ((currentWorld * depth) + camPoint.x);
   if (dbg) {
     console.log('before jump:', camera.position.y);
@@ -130,26 +137,20 @@ const moveCamera = (camZMap,dbg) => {
 const render = () => {
   requestAnimationFrame(render);
 
-  let dbg = false;
-  if (camZMap < 1 - zMapInc) {
-    camZMap += zMapInc;
-  } else {
-    camZMap = 0;
-    if (currentWorld === 0) {
-      // we were on the first world. Swap to the second world by:
-      // translating the camera and the second world to the first world's spot.
-      // rebuild the first world and place it in the second world's swap.
-      dbg = true;
-      currentWorld = 1;
-      rebuildWorld(0);
-      //camZMap = 0.05;
-      //zMapInc = 0.0005;
+  if (cameraMotion) {
+    let dbg = false;
+    if (camZMap < 1 - zMapInc) {
+      camZMap += zMapInc;
     } else {
-      currentWorld = 0;
-      rebuildWorld(1);
+      dbg=true;
+      camZMap = 0;
+      currentWorld++;
+      const movedWorld = worlds.shift();
+      worlds.push(movedWorld);
+      updateWorld(2);
     }
+    moveCamera(camZMap,dbg);
   }
-  moveCamera(camZMap,dbg);
 
   renderer.render(scene, camera);
 };
@@ -166,44 +167,33 @@ const width = 300;
 const depth = 300;
 const resolution = 100;
 const cameraStartZ = 150;
+const multiplier = 40;
+
 let worlds = [];
 let currentWorld = 0;
 let camZMap = 0.5;
 let lastYDiff = 0;
 let camYVel = 0;
 let camYAccel = 0;
+let cameraMotion = true;
 const camYDampener = 0.75;
 let zMapInc = 0.001;
 
 const group = new THREE.Group();
-const multiplier = 40;
+scene.add(group);
 
-worlds[0] = 
-  createWorld({
+for (let i = 0; i < 3; ++i) {
+  worlds[i] = {
     width: width,
     depth: depth,
-    index: 0,
-    zOffset: 0,
     multiplier: multiplier,
     resolution: resolution,
     scene:scene,
-    group:group
-  });
-
-
-worlds[1] = 
-  createWorld({
-    width: width,
-    depth: depth,
-    index: 1,
-    zOffset : depth,
-    multiplier: multiplier,
-    resolution: resolution,
-    scene:scene,
-    group:group
-  });
-
-
+    group:group,
+    ground: {}
+  }
+  updateWorld(i);
+}
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
 var renderer = new THREE.WebGLRenderer({alpha:true});
@@ -217,5 +207,14 @@ document.body.appendChild(renderer.domElement);
 
 camera.position.y = worlds[0].ground.spline.getPoint(camZMap).y;
 camera.position.z = cameraStartZ;
+
+document.onkeypress = function (e) {
+  e = e || window.event;
+  // use e.keyCode
+  console.log(e.keyCode);
+  if (e.keyCode === 32) {
+    cameraMotion = (cameraMotion ? false : true);
+  }
+};
 
 render(worlds[currentWorld]);
