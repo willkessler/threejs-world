@@ -42,13 +42,11 @@ const updateWorld = () => {
   const theWorld = worlds[worlds.length - 1];
   const width = theWorld.width;
   const depth = theWorld.depth;
-  const resolution = theWorld.resolution;
   const group = theWorld.group;
   const oceanY = -100;
   const flyBuffer = 9;
   const oceanFlyBuffer = 1;
   let geometry, vertices;
-  let multiplier = theWorld.multiplier || 25;
   let maxY = -1.0e-5;
   let minY = 1.0e+5;
   let splineVertices = [];
@@ -95,7 +93,7 @@ const updateWorld = () => {
   } else if (maxWorld > 0) {
     zOffset = -3 * depth;
   }
-  console.log('maxWorld, zOffset:', maxWorld, zOffset);
+  //console.log('maxWorld, zOffset:', maxWorld, zOffset);
   geometry.translate(0,0,zOffset);
   geometry.computeFaceNormals();
   geometry.computeVertexNormals();
@@ -106,15 +104,15 @@ const updateWorld = () => {
 
   let endTime = new Date().getTime();
   let elapsed = (endTime - startTime) / 1000;
-  console.log('World tweak time:', elapsed);
+  //console.log('World tweak time:', elapsed);
 
   endTime = new Date().getTime();
   elapsed = (endTime - startTime) / 1000;
+  
+  console.log('Adding spline.');
+  const groundSpline = new THREE.SplineCurve(splineVertices);
   elapsed = (endTime - veryStartTime) / 1000;
   console.log('Full build time:', elapsed);
-  
-  //console.log('Adding spline.');
-  const groundSpline = new THREE.SplineCurve(splineVertices);
   //console.log(groundSpline.getPoints(10));
 
   if (theWorld.ground.mesh) {
@@ -150,6 +148,8 @@ const advanceWorld = () => {
       const movedWorld = worlds.shift();
       worlds.push(movedWorld);
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
+      multiplier = Math.max(50, Math.min(10, multiplier * (Math.random() + 0.5)));
+      console.log('new multiplier:', multiplier);
       updateWorld();
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
       maxWorld++;
@@ -178,10 +178,9 @@ const width = 300;
 const depth = width;
 const resolution = 100;
 const cameraStartZ = 150;
-//const multiplier = 40;
-const multiplier = 40;
 
 let worlds = [];
+let multiplier = 40;
 let maxWorld;
 let camZMap = 0.5;
 let lastYDiff = 0;
@@ -198,8 +197,6 @@ for (maxWorld = 0; maxWorld < 3; ++maxWorld) {
   worlds[maxWorld] = {
     width: width,
     depth: depth,
-    multiplier: multiplier,
-    resolution: resolution,
     scene:scene,
     group:group,
     ground: {}
