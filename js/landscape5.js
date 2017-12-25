@@ -1,4 +1,18 @@
 // https://campushippo.com/lessons/how-to-convert-rgb-colors-to-hexadecimal-with-javascript-78219fdb
+const startTiming = (msg) => {
+  globalTimer = new Date().getTime();
+  if (msg) {
+    console.log('----------------------------------- start: ', msg, ' --------------------------------------------');
+  } else {
+    console.log('----------------------------------- start timing --------------------------------------------');
+  }
+}
+
+const markTime = (msg) => {
+  const now = new Date().getTime();
+  console.log(msg, ' : ', (now - globalTimer) / 1000, 's');
+}
+
 const rgbToHexValue = function (rgb) { 
   var hex = Number(rgb).toString(16);
   if (hex.length < 2) {
@@ -51,7 +65,7 @@ const updateWorld = () => {
   let minY = 1.0e+5;
   let splineVertices = [];
 
-  const veryStartTime = new Date().getTime();
+  startTiming();
   const refreshing = (theWorld.ground.mesh !== undefined);
   console.log('Building terrain.');
   if (refreshing) {
@@ -67,7 +81,7 @@ const updateWorld = () => {
     }
   }
 
-  const startTime = new Date().getTime();
+  markTime('Initial build');
 
   let noise, noiseZ;
   for (let z = 0, noiseZ; z <= resolution; ++z) {
@@ -85,6 +99,8 @@ const updateWorld = () => {
     }
   }
 
+  markTime('Assigned noise.');
+
   //geometry.translate(0,(maxWorld === 0 ? 0 : -.1),(maxWorld === 0 ? 0 : -1 * (depth - (depth / resolution))));
   //geometry.translate(0,0,((-1 * depth * maxWorld) + (depth/resolution)));
   let zOffset = 0;
@@ -95,24 +111,22 @@ const updateWorld = () => {
   }
   //console.log('maxWorld, zOffset:', maxWorld, zOffset);
   geometry.translate(0,0,zOffset);
+  markTime('Translate');
   geometry.computeFaceNormals();
+  markTime('FaceNormals');
   geometry.computeVertexNormals();
+  markTime('VertexNormals');
   geometry.elementsNeedUpdate = true;
   const wireColor = (maxWorld === 0 ? '#00ff00' : '#ff0000');
   const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
+  markTime('Material');
   const groundMesh = new THREE.Mesh(geometry, material);
+  markTime('Mesh');
 
-  let endTime = new Date().getTime();
-  let elapsed = (endTime - startTime) / 1000;
-  //console.log('World tweak time:', elapsed);
-
-  endTime = new Date().getTime();
-  elapsed = (endTime - startTime) / 1000;
-  
   console.log('Adding spline.');
   const groundSpline = new THREE.SplineCurve(splineVertices);
-  elapsed = (endTime - veryStartTime) / 1000;
-  console.log('Full build time:', elapsed);
+  markTime('Spline time')
+
   //console.log(groundSpline.getPoints(10));
 
   if (theWorld.ground.mesh) {
@@ -125,6 +139,9 @@ const updateWorld = () => {
     mesh: groundMesh,
     spline: groundSpline
   }
+
+  markTime('Full build time:');
+
 }
 
 const moveCamera = (camZMap) => {
@@ -132,11 +149,18 @@ const moveCamera = (camZMap) => {
   camera.position.z = cameraStartZ - (((maxWorld - 3) * depth) + camPoint.x);
 //  console.log('before jump:', camera.position.y);
   const camDiff = camPoint.y - camera.position.y;
+  if (cameraLockedOn) {
+    camera.position.y = camPoint.y;
+    return;
+  } else if (camDiff < 0.001) {
+    cameraLockedOn = true;
+  }
   camYAccel = camDiff / 10;
   camera.position.y += camYVel;
   camYVel += camYAccel;
   camYVel *= camYDampener;
-//  console.log('after jump, s0, s1, camDiff, y:', worlds[0].ground.spline.getPoint(1),worlds[1].ground.spline.getPoint(0),camDiff, camPoint.y);
+  console.log('adjusting camera to get on track.');
+  //  console.log('after jump, s0, s1, camDiff, y:', worlds[0].ground.spline.getPoint(1),worlds[1].ground.spline.getPoint(0),camDiff, camPoint.y);
 }
 
 const advanceWorld = () => {
@@ -145,6 +169,7 @@ const advanceWorld = () => {
       camZMap += zMapInc;
     } else {
       camZMap = 0;
+      cameraLockedOn = false;
       const movedWorld = worlds.shift();
       worlds.push(movedWorld);
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
@@ -168,7 +193,7 @@ const render = () => {
 
 const simplex = new SimplexNoise(); // Simplex noise: https://codepen.io/jwagner/pen/BNmpdm?editors=1011
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
+scene.fog = new THREE.FogExp2( 0xffffff, 0.005 );
 
 const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
@@ -187,7 +212,8 @@ let lastYDiff = 0;
 let camYVel = 0;
 let camYAccel = 0;
 let cameraMotion = true;
-const camYDampener = 0.75;
+let cameraLockedOn = false;
+const camYDampener = 0.65;
 let zMapInc = 0.001;
 
 const group = new THREE.Group();
