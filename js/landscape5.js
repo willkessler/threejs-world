@@ -30,14 +30,16 @@ const genNoise = (x,z, resolution, width, depth, splineVertices) => {
 
 const assignValToVertex = (vertices, x, z, resolution, val, multiplier) => {
   //console.log('x,z,val, multiplier, product:', x, z, val, multiplier, val * multiplier);
+  //const offset = (z * (resolution + 1)) + x;
   const offset = (z * (resolution + 1)) + x;
+  //console.log('assign:x,z,offset, val:', x,z,offset,val);
   if (offset < vertices.length) {
     vertices[offset].y = val * multiplier;
   }
 }
 
-const updateWorld = (index) => {
-  const theWorld = worlds[index];
+const updateWorld = () => {
+  const theWorld = worlds[worlds.length - 1];
   const width = theWorld.width;
   const depth = theWorld.depth;
   const resolution = theWorld.resolution;
@@ -63,6 +65,7 @@ const updateWorld = (index) => {
     // Flip the planegeometry so it's flat.
     for (let i=0; i < vertices.length; ++i) {
       vertices[i].z = vertices[i].y;
+      vertices[i].y = 0;
     }
   }
 
@@ -70,10 +73,11 @@ const updateWorld = (index) => {
 
   let noise, noiseZ;
   for (let z = 0, noiseZ; z <= resolution; ++z) {
-    noiseZ = index * resolution + z + (index > 0 ? -1 : 0);
+    //noiseZ = index * resolution + z + (index > 0 ? -1 : 0);
+    noiseZ = maxWorld * resolution + z;
     for (let x = 0; x <= resolution; ++x) {
       noise = genNoise(x + 1,noiseZ, resolution, width, depth, splineVertices);
-      //console.log('x, z, noiseZ, noiseVal:', x, z, noiseZ, noiseVal);
+      //console.log('x, z, noiseZ, noise:', x, z, noiseZ, noise.val);
       if (x === resolution / 2) {
         splineY = Math.max(noise.flyOverVal * multiplier + flyBuffer * (1 + Math.random() / 20), oceanY + oceanFlyBuffer);
         splineVertices.push(new THREE.Vector2(z * depth / resolution, splineY));
@@ -83,12 +87,20 @@ const updateWorld = (index) => {
     }
   }
 
-  //geometry.translate(0,(index === 0 ? 0 : -.1),(index === 0 ? 0 : -1 * (depth - (depth / resolution))));
-  geometry.translate(0,0,((-1 * depth * index) + (depth/resolution)));
+  //geometry.translate(0,(maxWorld === 0 ? 0 : -.1),(maxWorld === 0 ? 0 : -1 * (depth - (depth / resolution))));
+  //geometry.translate(0,0,((-1 * depth * maxWorld) + (depth/resolution)));
+  let zOffset = 0;
+  if ((maxWorld > 0) && (maxWorld < 3)) {
+    zOffset = -1 * maxWorld * depth; //  + depth/resolution;
+  } else if (maxWorld > 0) {
+    zOffset = -3 * depth;
+  }
+  console.log('maxWorld, zOffset:', maxWorld, zOffset);
+  geometry.translate(0,0,zOffset);
   geometry.computeFaceNormals();
   geometry.computeVertexNormals();
   geometry.elementsNeedUpdate = true;
-  const wireColor = (index === 0 ? '#00ff00' : '#ff0000');
+  const wireColor = (maxWorld === 0 ? '#00ff00' : '#ff0000');
   const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
   const groundMesh = new THREE.Mesh(geometry, material);
 
@@ -101,7 +113,7 @@ const updateWorld = (index) => {
   elapsed = (endTime - veryStartTime) / 1000;
   console.log('Full build time:', elapsed);
   
-  console.log('Adding spline.');
+  //console.log('Adding spline.');
   const groundSpline = new THREE.SplineCurve(splineVertices);
   //console.log(groundSpline.getPoints(10));
 
@@ -117,60 +129,60 @@ const updateWorld = (index) => {
   }
 }
 
-const moveCamera = (camZMap,dbg) => {
-  //console.log('camZMap:', camZMap);
+const moveCamera = (camZMap) => {
   const camPoint = worlds[0].ground.spline.getPoint(camZMap);
-  camera.position.z = cameraStartZ - ((currentWorld * depth) + camPoint.x);
-  if (dbg) {
-    console.log('before jump:', camera.position.y);
-  }
+  camera.position.z = cameraStartZ - (((maxWorld - 3) * depth) + camPoint.x);
+//  console.log('before jump:', camera.position.y);
   const camDiff = camPoint.y - camera.position.y;
   camYAccel = camDiff / 10;
   camera.position.y += camYVel;
   camYVel += camYAccel;
   camYVel *= camYDampener;
-  if (dbg) {
-    console.log('after jump, s0, s1, camDiff, y:', worlds[0].ground.spline.getPoint(1),worlds[1].ground.spline.getPoint(0),camDiff, camPoint.y);
+//  console.log('after jump, s0, s1, camDiff, y:', worlds[0].ground.spline.getPoint(1),worlds[1].ground.spline.getPoint(0),camDiff, camPoint.y);
+}
+
+const advanceWorld = () => {
+  if (cameraMotion) {
+    if (camZMap < 1 - zMapInc) {
+      camZMap += zMapInc;
+    } else {
+      camZMap = 0;
+      const movedWorld = worlds.shift();
+      worlds.push(movedWorld);
+      //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
+      updateWorld();
+      //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
+      maxWorld++;
+    }
+    moveCamera(camZMap);
   }
 }
 
 const render = () => {
   requestAnimationFrame(render);
 
-  if (cameraMotion) {
-    let dbg = false;
-    if (camZMap < 1 - zMapInc) {
-      camZMap += zMapInc;
-    } else {
-      dbg=true;
-      camZMap = 0;
-      currentWorld++;
-      const movedWorld = worlds.shift();
-      worlds.push(movedWorld);
-      updateWorld(2);
-    }
-    moveCamera(camZMap,dbg);
-  }
+  advanceWorld();
 
   renderer.render(scene, camera);
 };
 
 const simplex = new SimplexNoise(); // Simplex noise: https://codepen.io/jwagner/pen/BNmpdm?editors=1011
 const scene = new THREE.Scene();
-// scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
+scene.fog = new THREE.FogExp2( 0xffffff, 0.01 );
 
 const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
 const width = 300;
-const depth = 300;
+const depth = width;
 const resolution = 100;
 const cameraStartZ = 150;
+//const multiplier = 40;
 const multiplier = 40;
 
 let worlds = [];
-let currentWorld = 0;
+let maxWorld;
 let camZMap = 0.5;
 let lastYDiff = 0;
 let camYVel = 0;
@@ -182,8 +194,8 @@ let zMapInc = 0.001;
 const group = new THREE.Group();
 scene.add(group);
 
-for (let i = 0; i < 3; ++i) {
-  worlds[i] = {
+for (maxWorld = 0; maxWorld < 3; ++maxWorld) {
+  worlds[maxWorld] = {
     width: width,
     depth: depth,
     multiplier: multiplier,
@@ -192,7 +204,7 @@ for (let i = 0; i < 3; ++i) {
     group:group,
     ground: {}
   }
-  updateWorld(i);
+  updateWorld();
 }
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
@@ -201,20 +213,29 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xffffff, 1)
 document.body.appendChild(renderer.domElement);
 
-//camera.position.y = 100;
-//camera.position.z = 80;
-//camera.rotation.x = -Math.PI / 4;
+//camera.position.y = 60;
+//camera.position.z = -50;
+//camera.rotation.x = -Math.PI / 2;
+//camera.position.y = 20;
+//camera.position.z = 40;
+//camera.rotation.x = -Math.PI /8;
 
-camera.position.y = worlds[0].ground.spline.getPoint(camZMap).y;
-camera.position.z = cameraStartZ;
+//camera.position.y = worlds[0].ground.spline.getPoint(camZMap).y;
+//camera.position.z = cameraStartZ;
+moveCamera(camZMap);
+//console.log('Initial geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
 
 document.onkeypress = function (e) {
   e = e || window.event;
   // use e.keyCode
-  console.log(e.keyCode);
+  //console.log(e.keyCode);
   if (e.keyCode === 32) {
     cameraMotion = (cameraMotion ? false : true);
-  }
-};
+  } else if (e.keyCode === 93) {
+    camera.position.z -= 5;
+  } else if (e.keyCode === 91) {
+    camera.position.z += 5;
+  };
+}
 
-render(worlds[currentWorld]);
+render();
