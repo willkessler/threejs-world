@@ -21,6 +21,23 @@ const rgbToHexValue = function (rgb) {
   return hex;
 };
 
+const setupOcean = (scene,width,height) => {
+  const oceanGeometry = new THREE.PlaneGeometry(width,height,1,1);
+  const oceanVertices = oceanGeometry.vertices;
+  for (let i in oceanVertices) {
+    oceanVertices[i].z = oceanVertices[i].y;
+    oceanVertices[i].y = oceanY;
+  }
+
+  // https://stackoverflow.com/questions/44749446/enable-smooth-shading-with-three-js
+  // https://stackoverflow.com/questions/15994944/transparent-objects-in-threejs
+  oceanMaterial = new THREE.MeshBasicMaterial({color: 0x1155dd, side: THREE.DoubleSide, transparent: true, opacity: 0.88});
+  const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+  scene.add(ocean);
+  return(ocean);
+}
+
+
 const genNoise = (x,z, resolution, width, depth, splineVertices) => {
   const noiseDepth = 10;
   const exponent = 2;
@@ -57,7 +74,6 @@ const updateWorld = () => {
   const width = theWorld.width;
   const depth = theWorld.depth;
   const group = theWorld.group;
-  const oceanY = -100;
   const flyBuffer = 9;
   const oceanFlyBuffer = 1;
   let geometry, vertices;
@@ -72,6 +88,7 @@ const updateWorld = () => {
     geometry = theWorld.ground.geometry;
     vertices = geometry.vertices;
   } else {
+    theWorld.material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
     geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
     vertices = geometry.vertices;
     // Flip the planegeometry so it's flat.
@@ -96,11 +113,30 @@ const updateWorld = () => {
         //console.log('pushing onto spline x,flyOverVal:', x, splineY);
       }
       assignValToVertex(vertices, x, z, resolution, noise.val, multiplier);
+      maxY = (maxY < noise.val * multiplier ? noise.val * multiplier : maxY);
+      minY = (minY > noise.val * multiplier ? noise.val * multiplier : minY);
     }
   }
 
   markTime('Assigned noise.');
 
+  let colorRange = maxY - oceanY;
+  let t, hexColor,hexColorStr;
+  let rVal, gVal, bVal;
+  for (let faceId in geometry.faces) {
+    face = geometry.faces[faceId];
+    vertex = geometry.vertices[face.a];
+    t = (Math.max(oceanY,vertex.y) - oceanY) / colorRange;
+    rVal = parseInt(Math.max(0, Math.min(255, colorCurves.r.getPoint(t).y)));
+    gVal = parseInt(Math.max(0, Math.min(255, colorCurves.g.getPoint(t).y)));
+    bVal = parseInt(Math.max(0, Math.min(255,colorCurves.b.getPoint(t).y)));
+    hexColorStr = rgbToHexValue(rVal) + rgbToHexValue(gVal) + rgbToHexValue(bVal);
+    hexColor = parseInt(hexColorStr, 16);
+    geometry.faces[faceId].color.setHex(hexColor);
+  }
+  
+  markTime('Assigned colors');
+  
   //geometry.translate(0,(maxWorld === 0 ? 0 : -.1),(maxWorld === 0 ? 0 : -1 * (depth - (depth / resolution))));
   //geometry.translate(0,0,((-1 * depth * maxWorld) + (depth/resolution)));
   let zOffset = 0;
@@ -118,9 +154,8 @@ const updateWorld = () => {
   markTime('VertexNormals');
   geometry.elementsNeedUpdate = true;
   const wireColor = (maxWorld === 0 ? '#00ff00' : '#ff0000');
-  const material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
   markTime('Material');
-  const groundMesh = new THREE.Mesh(geometry, material);
+  const groundMesh = new THREE.Mesh(geometry, theWorld.material);
   markTime('Mesh');
 
   console.log('Adding spline.');
@@ -147,7 +182,7 @@ const updateWorld = () => {
 const moveCamera = (camZMap) => {
   const camPoint = worlds[0].ground.spline.getPoint(camZMap);
   camera.position.z = cameraStartZ - (((maxWorld - 3) * depth) + camPoint.x);
-//  console.log('before jump:', camera.position.y);
+  //  console.log('before jump:', camera.position.y);
   const camDiff = camPoint.y - camera.position.y;
   if (cameraLockedOn) {
     camera.position.y = camPoint.y;
@@ -173,11 +208,14 @@ const advanceWorld = () => {
       const movedWorld = worlds.shift();
       worlds.push(movedWorld);
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
-      multiplier = Math.max(50, Math.min(10, multiplier * (Math.random() + 0.5)));
+      //multiplier = Math.max(50, Math.min(10, multiplier * (Math.random() + 0.5)));
       console.log('new multiplier:', multiplier);
       updateWorld();
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
       maxWorld++;
+      if (ocean) {
+        ocean.geometry.translate(0,0,-1*depth); // move ocean forward with camera
+      }
     }
     moveCamera(camZMap);
   }
@@ -191,6 +229,22 @@ const render = () => {
   renderer.render(scene, camera);
 };
 
+// --------------------------------------------  Main code ------------------------------------------------------------
+
+// See: http://blog.mastermaps.com/2012/06/creating-color-relief-and-slope-shading.html
+const colorRanges = 
+  {
+    'r': [ new THREE.Vector2(0,165), new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255) ],
+    'g': [ new THREE.Vector2(0,175), new THREE.Vector2(5,255), new THREE.Vector2(60,240),  new THREE.Vector2(90,255)],
+    'b': [ new THREE.Vector2(0,42),  new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255)]
+  };
+const colorCurves = 
+  {
+    'r': new THREE.SplineCurve(colorRanges.r),
+    'g': new THREE.SplineCurve(colorRanges.g),
+    'b': new THREE.SplineCurve(colorRanges.b)
+  };
+
 const simplex = new SimplexNoise(); // Simplex noise: https://codepen.io/jwagner/pen/BNmpdm?editors=1011
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2( 0xffffff, 0.005 );
@@ -199,12 +253,14 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 300;
+const width = 400;
 const depth = width;
-const resolution = 100;
-const cameraStartZ = 150;
+const resolution = 130;
+const cameraStartZ = 200;
+const oceanY = -10;
 
 let worlds = [];
+let ocean;
 let multiplier = 40;
 let maxWorld;
 let camZMap = 0.5;
@@ -218,6 +274,8 @@ let zMapInc = 0.001;
 
 const group = new THREE.Group();
 scene.add(group);
+
+ocean = setupOcean(scene,5000,5000);
 
 for (maxWorld = 0; maxWorld < 3; ++maxWorld) {
   worlds[maxWorld] = {
