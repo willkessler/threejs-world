@@ -2,6 +2,7 @@
 // X Adjust landscape height over the space of one depth unit
 // Put back Udacity lettering and logo, put it on the landscape slope
 // Set vertex colors instead of entire triangle
+// Web workers
 // Put in a clock
 // Make sky some changing color, maybe sunset/sunrise based on clock
 // Put in some Udacity data and or course advertisements
@@ -29,6 +30,48 @@ const rgbToHexValue = function (rgb) {
   }
   return hex;
 };
+
+var makeText = (text, group) => {
+  var loader = new THREE.FontLoader();
+
+  loader.load( 'fonts/optimer_bold.typeface.json', function ( font ) {
+
+    let textSplineVertices = [], textOffset, vertIndex,t, letterMesh, lettersZ, letterPosition,geometry;
+    const theWorld = worlds[0].ground;
+    const gridSize = depth / resolution;
+    const halfResolution = parseInt(resolution / 2);
+    for (let i = 0; i < text.length; ++i) {
+      textOffset = halfResolution - parseInt(text.length / 2) + i;
+      vertIndex = (resolution) * ((resolution) / 4) + parseInt(i * 3.5);
+      textSplineVertices.push(new THREE.Vector2(theWorld.geometry.vertices[vertIndex].x,theWorld.geometry.vertices[vertIndex].y));
+      lettersZ = theWorld.geometry.vertices[vertIndex].z;
+    }
+    const textSpline = new THREE.SplineCurve(textSplineVertices);
+    console.log('textSpline:', textSpline);
+    const material = new THREE.MeshPhongMaterial({color: 0xfff800, flatShading:true});
+    for (let i = 0; i < text.length; ++i) {
+      t = i / text.length;
+      letterPosition = textSpline.getPoint(t);
+      console.log('t, letterPosition:', t, letterPosition);
+      geometry = new THREE.TextGeometry( text[i], {
+        font: font,
+        size: 8,
+        height: 1,
+        curveSegments: 10
+      } );
+      geometry.computeBoundingBox();
+      geometry.computeVertexNormals();
+
+      letterMesh = new THREE.Mesh(geometry, material);
+      letterMesh.position.x = letterPosition.x;
+      letterMesh.position.y = letterPosition.y+5;
+      letterMesh.position.z = lettersZ;
+      group.add(letterMesh);
+    }
+
+  } );
+  
+}
 
 const setupOcean = (scene,width,height) => {
   const oceanGeometry = new THREE.PlaneGeometry(width,height,1,1);
@@ -97,7 +140,7 @@ const updateWorld = () => {
     geometry = theWorld.ground.geometry;
     vertices = geometry.vertices;
   } else {
-    theWorld.material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.FaceColors });
+    theWorld.material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.VertexColors });
     geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
     vertices = geometry.vertices;
     // Flip the planegeometry so it's flat.
@@ -131,19 +174,32 @@ const updateWorld = () => {
 
   markTime('Assigned noise.');
 
+  // Assign colors to the mountains.
   let colorRange = maxY - oceanY;
-  let t, hexColor,hexColorStr;
-  let rVal, gVal, bVal;
-  for (let faceId in geometry.faces) {
-    face = geometry.faces[faceId];
-    vertex = geometry.vertices[face.a];
+  const getSlopeColor = (vertex) => {
+    let t, hexColor,hexColorStr;
     t = (Math.max(oceanY,vertex.y) - oceanY) / colorRange;
     rVal = parseInt(Math.max(0, Math.min(255, colorCurves.r.getPoint(t).y)));
     gVal = parseInt(Math.max(0, Math.min(255, colorCurves.g.getPoint(t).y)));
     bVal = parseInt(Math.max(0, Math.min(255,colorCurves.b.getPoint(t).y)));
     hexColorStr = rgbToHexValue(rVal) + rgbToHexValue(gVal) + rgbToHexValue(bVal);
     hexColor = parseInt(hexColorStr, 16);
-    geometry.faces[faceId].color.setHex(hexColor);
+    return(hexColor);
+  }
+  let rVal, gVal, bVal,hexColor;
+  for (let faceId in geometry.faces) {
+    face = geometry.faces[faceId];
+    face.vertexColors = [];
+    vertex = geometry.vertices[face.a];
+    hexColor = getSlopeColor(vertex);
+    face.vertexColors.push(new THREE.Color(hexColor));
+    vertex = geometry.vertices[face.b];
+    hexColor = getSlopeColor(vertex);
+    face.vertexColors.push(new THREE.Color(hexColor));
+    vertex = geometry.vertices[face.c];
+    hexColor = getSlopeColor(vertex);
+    face.vertexColors.push(new THREE.Color(hexColor));
+    //geometry.faces[faceId].color.setHex(hexColor);
   }
   
   markTime('Assigned colors');
@@ -245,9 +301,9 @@ const render = () => {
 // See: http://blog.mastermaps.com/2012/06/creating-color-relief-and-slope-shading.html
 const colorRanges = 
   {
-    'r': [ new THREE.Vector2(0,165), new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255) ],
-    'g': [ new THREE.Vector2(0,175), new THREE.Vector2(5,255), new THREE.Vector2(60,240),  new THREE.Vector2(90,255)],
-    'b': [ new THREE.Vector2(0,42),  new THREE.Vector2(5,90),  new THREE.Vector2(60,150),  new THREE.Vector2(90,255)]
+    'r': [ new THREE.Vector2(0,165), new THREE.Vector2(5,70),  new THREE.Vector2(60,130),  new THREE.Vector2(90,255) ],
+    'g': [ new THREE.Vector2(0,175), new THREE.Vector2(5,215), new THREE.Vector2(60,210),  new THREE.Vector2(90,255)],
+    'b': [ new THREE.Vector2(0,42),  new THREE.Vector2(5,70),  new THREE.Vector2(60,130),  new THREE.Vector2(90,255)]
   };
 const colorCurves = 
   {
@@ -258,31 +314,31 @@ const colorCurves =
 
 const simplex = new SimplexNoise(); // Simplex noise: https://codepen.io/jwagner/pen/BNmpdm?editors=1011
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2( 0xeeeeee, 0.005 );
+scene.fog = new THREE.FogExp2( 0xeeeeee, 0.008 );
 
 const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 400;
+const width = 390; // note that width should be an even multiple of resolution to make it easier to calculate the grid
 const depth = width;
 const resolution = 130;
-const cameraStartZ = 200;
+const cameraStartZ = 195;
 const oceanY = -10;
 
 let worlds = [];
 let ocean;
-let multiplier = 40;
+let multiplier = 60;
 let multiplierAdjuster = 0;
 let maxWorld;
-let camZMap = 0.5;
+let camZMap = 0;
 let lastYDiff = 0;
 let camYVel = 0;
 let camYAccel = 0;
 let cameraMotion = true;
 let cameraLockedOn = false;
 const camYDampener = 0.65;
-let zMapInc = 0.0015;
+let zMapInc = 0.0005;
 
 const group = new THREE.Group();
 scene.add(group);
@@ -299,6 +355,8 @@ for (maxWorld = 0; maxWorld < 3; ++maxWorld) {
   }
   updateWorld();
 }
+
+makeText('Udacity', group);
 
 var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.5, 10000);
 var renderer = new THREE.WebGLRenderer({alpha:true});
