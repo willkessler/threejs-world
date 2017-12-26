@@ -1,3 +1,12 @@
+// TODO:
+// X Adjust landscape height over the space of one depth unit
+// Put back Udacity lettering and logo, put it on the landscape slope
+// Set vertex colors instead of entire triangle
+// Put in a clock
+// Make sky some changing color, maybe sunset/sunrise based on clock
+// Put in some Udacity data and or course advertisements
+// Other scenery: whales/boats/trees/clouds
+
 // https://campushippo.com/lessons/how-to-convert-rgb-colors-to-hexadecimal-with-javascript-78219fdb
 const startTiming = (msg) => {
   globalTimer = new Date().getTime();
@@ -41,7 +50,7 @@ const setupOcean = (scene,width,height) => {
 const genNoise = (x,z, resolution, width, depth, splineVertices) => {
   const noiseDepth = 10;
   const exponent = 2;
-  const flyOverResolution = 2;
+  const flyOverResolution = 3;
   let e = 0,power, nx, nz, flyOverVal;
   for (let i = 0; i < noiseDepth; ++i) {
     power = Math.pow(exponent, i);
@@ -116,7 +125,9 @@ const updateWorld = () => {
       maxY = (maxY < noise.val * multiplier ? noise.val * multiplier : maxY);
       minY = (minY > noise.val * multiplier ? noise.val * multiplier : minY);
     }
+    multiplier = Math.min(50, Math.max(10, multiplier + multiplierAdjuster));
   }
+  console.log('multiplier adjusted to:', multiplier, multiplierAdjuster);
 
   markTime('Assigned noise.');
 
@@ -208,8 +219,8 @@ const advanceWorld = () => {
       const movedWorld = worlds.shift();
       worlds.push(movedWorld);
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
-      //multiplier = Math.max(50, Math.min(10, multiplier * (Math.random() + 0.5)));
-      console.log('new multiplier:', multiplier);
+      multiplierAdjuster = Math.min(2, Math.max(-2, (Math.random() * 2 - 1)));
+      //console.log('new multiplierAdjuster:', multiplierAdjuster);
       updateWorld();
       //console.log('geometries:', worlds[0].ground.geometry.vertices,worlds[1].ground.geometry.vertices,worlds[2].ground.geometry.vertices);
       maxWorld++;
@@ -247,7 +258,7 @@ const colorCurves =
 
 const simplex = new SimplexNoise(); // Simplex noise: https://codepen.io/jwagner/pen/BNmpdm?editors=1011
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2( 0xffffff, 0.005 );
+scene.fog = new THREE.FogExp2( 0xeeeeee, 0.005 );
 
 const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
@@ -262,6 +273,7 @@ const oceanY = -10;
 let worlds = [];
 let ocean;
 let multiplier = 40;
+let multiplierAdjuster = 0;
 let maxWorld;
 let camZMap = 0.5;
 let lastYDiff = 0;
@@ -270,7 +282,7 @@ let camYAccel = 0;
 let cameraMotion = true;
 let cameraLockedOn = false;
 const camYDampener = 0.65;
-let zMapInc = 0.001;
+let zMapInc = 0.0015;
 
 const group = new THREE.Group();
 scene.add(group);
