@@ -1,9 +1,9 @@
 // TODO:
 // X Adjust landscape height over the space of one depth unit
-// Put back Udacity lettering and logo, put it on the landscape slope
-// Set vertex colors instead of entire triangle
+// X Put back Udacity lettering and logo, put it on the landscape slope
+// X Set vertex colors instead of entire triangle
 // Web workers
-// Put in a clock
+// Put in a clock that updates
 // Make sky some changing color, maybe sunset/sunrise based on clock
 // Put in some Udacity data and or course advertisements
 // Other scenery: whales/boats/trees/clouds
@@ -338,7 +338,7 @@ let camYAccel = 0;
 let cameraMotion = true;
 let cameraLockedOn = false;
 const camYDampener = 0.65;
-let zMapInc = 0.0005;
+let zMapInc = 0.00075;
 
 const group = new THREE.Group();
 scene.add(group);
