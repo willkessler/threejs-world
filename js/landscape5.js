@@ -40,9 +40,11 @@ var makeText = (text, group) => {
     const theWorld = worlds[0].ground;
     const gridSize = depth / resolution;
     const halfResolution = parseInt(resolution / 2);
+    const numVertsPerRow = resolution + 1;
+    const rowBase = numVertsPerRow * parseInt(numVertsPerRow / 2);
+    const colBase = halfResolution - parseInt(text.length / 2);
     for (let i = 0; i < text.length; ++i) {
-      textOffset = halfResolution - parseInt(text.length / 2) + i;
-      vertIndex = (resolution) * ((resolution) / 4) + parseInt(i * 3.5);
+      vertIndex =  rowBase + colBase + i;
       textSplineVertices.push(new THREE.Vector2(theWorld.geometry.vertices[vertIndex].x,theWorld.geometry.vertices[vertIndex].y));
       lettersZ = theWorld.geometry.vertices[vertIndex].z;
     }
@@ -64,7 +66,7 @@ var makeText = (text, group) => {
 
       letterMesh = new THREE.Mesh(geometry, material);
       letterMesh.position.x = letterPosition.x;
-      letterMesh.position.y = letterPosition.y+5;
+      letterMesh.position.y = letterPosition.y;
       letterMesh.position.z = lettersZ;
       group.add(letterMesh);
     }
@@ -140,7 +142,7 @@ const updateWorld = () => {
     geometry = theWorld.ground.geometry;
     vertices = geometry.vertices;
   } else {
-    theWorld.material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:false, vertexColors: THREE.VertexColors });
+    theWorld.material = new THREE.MeshLambertMaterial({side: THREE.DoubleSide, wireframe:true, vertexColors: THREE.VertexColors });
     geometry = new THREE.PlaneGeometry(width, depth, resolution, resolution);
     vertices = geometry.vertices;
     // Flip the planegeometry so it's flat.
@@ -320,15 +322,18 @@ const light = new THREE.DirectionalLight( 0xffffff );
 light.position.set( 400, 400, 400 );
 scene.add( light );
 
-const width = 390; // note that width should be an even multiple of resolution to make it easier to calculate the grid
+//const width = 390; // note that width should be an even multiple of resolution to make it easier to calculate the grid
+const width = 100;
+const resolution = 20;
 const depth = width;
-const resolution = 130;
+//const resolution = 130;
 const cameraStartZ = 195;
 const oceanY = -10;
 
 let worlds = [];
 let ocean;
-let multiplier = 60;
+//let multiplier = 60;
+let multiplier = 10;
 let multiplierAdjuster = 0;
 let maxWorld;
 let camZMap = 0;
