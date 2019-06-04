@@ -73,6 +73,19 @@ var makeText = (text, group) => {
 
   } );
   
+  var svgManager = new THREE.SVGLoader();
+  var url = 'shapes/mark.svg';
+
+  function svg_loading_done_callback(doc) {
+    console.log('svg doc:', doc);
+  };
+
+  svgManager.load(url, 
+                  svg_loading_done_callback, 
+                  function(){console.log("Loading SVG...");},
+                  function(){console.log("Error loading SVG!");
+                  });
+
 }
 
 const setupOcean = (scene,width,height) => {
