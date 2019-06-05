@@ -56,7 +56,7 @@ var makeText = (text, group) => {
     for (let i = 0; i < text.length; ++i) {
       t = i / text.length;
       letterPosition = textSpline.getPoint(t);
-      console.log('t, letterPosition:', t, letterPosition);
+      //console.log('t, letterPosition:', t, letterPosition);
       geometry = new THREE.TextGeometry( text[i], {
         font: font,
         size: 8,
@@ -80,7 +80,7 @@ var makeText = (text, group) => {
   var url = 'shapes/mark.svg';
 
   function svg_loading_done_callback(doc) {
-    console.log('svg doc:', doc);
+    //console.log('svg doc:', doc);
   };
 
   svgManager.load(url, 
@@ -306,6 +306,23 @@ const advanceWorld = () => {
   }
 }
 
+// Show an element that's hidden. Sort of backwards from https://jsfiddle.net/cferdinandi/qgpxvhhb/6/
+const showElem = function (elem) {
+  elem.classList.remove('is-hidden');
+};
+
+// Hide an element that's not hidden
+const hideElem = function (id) {
+  const elem = document.getElementById(id);
+  elem.classList.add('is-hidden');
+};
+
+const hideHeadline = () => {
+  setTimeout(() => {
+    hideElem('headline');
+  }, 1000);
+};
+
 const render = () => {
   requestAnimationFrame(render);
 
@@ -411,4 +428,6 @@ document.onkeypress = function (e) {
   };
 }
 
+hideHeadline();
 render();
+
