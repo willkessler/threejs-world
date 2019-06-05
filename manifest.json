@@ -9,7 +9,7 @@
     "tabs"
   ],
   "chrome_url_overrides" : {
-    "newtab": "landscape.html"
+    "newtab": "landscape5.html"
   },
   "content_scripts": [
     {
