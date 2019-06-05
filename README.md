@@ -1,5 +1,7 @@
 ## Flyover Simulator
 
+![demo_movie](./demo.gif)
+
 This Chrome Browser Extension simulates flying over an endless landscape, every time you pop a new browser tab.
 
 ### Installing
